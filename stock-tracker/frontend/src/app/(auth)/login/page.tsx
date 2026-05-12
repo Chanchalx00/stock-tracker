@@ -66,7 +66,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="pointer-events-auto text-gray-500 hover:text-gray-300 transition-colors"
+                className="pointer-events-auto text-gray-400 hover:text-gray-300 transition-colors"
               >
                 {showPassword ? <IconEyeOff size={14} /> : <IconEye size={14} />}
               </button>
@@ -84,9 +84,10 @@ export default function LoginPage() {
           </Button>
         </div>
 
-        <p className="text-center text-gray-500 text-sm mt-4">
+        <p className="text-center text-gray-400 text-sm mt-4">
           No account?{" "}
-          <Link href="/signup" className="text-emerald-400 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded">
+          <Link href="/signup"  className="text-emerald-400 underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
+>
             Create one
           </Link>
         </p>

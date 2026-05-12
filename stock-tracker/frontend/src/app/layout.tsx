@@ -33,12 +33,8 @@ export const metadata: Metadata = {
   },
 
   robots: {
-    index: false,
-    follow: false,
-    googleBot: {
-      index: false,
-      follow: false,
-    },
+    index: true,
+    follow: true,
   },
 
   icons: {
@@ -70,7 +66,7 @@ export default function RootLayout({
         </a>
 
         <AuthProvider>
-          <div id="main-content">{children}</div>
+          <main id="main-content">{children}</main>
         </AuthProvider>
       </body>
     </html>
