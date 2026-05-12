@@ -1,210 +1,344 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
-import api from "@/lib/api";
-import { ChevronDown, TrendingUp, TrendingDown } from "lucide-react";
+import Toast from "@/components/Toast";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import { Select } from "@/components/ui/Select";
+import { AlertBanner } from "@/components/ui/AlertBanner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Spinner } from "@/components/ui/Spinner";
+import { Badge } from "@/components/ui/Badge";
 
-interface Alert {
-  _id: string;
-  symbol: string;
-  condition: "GREATER_THAN" | "LESS_THAN";
-  targetPrice: number;
-  isTriggered: boolean;
-  triggeredAt?: string;
-  triggeredPrice?: number;
-  createdAt: string;
+import {
+  IconAlerts,
+  IconBellOff,
+  IconCheck,
+  IconTrendingUp,
+  IconTrendingDown,
+  IconTrash,
+  IconBellAdd,
+} from "@/lib/icons";
+
+import { useAlerts } from "@/hooks/useAlerts";
+import { useSymbolValidation } from "@/hooks/useSymbolValidation";
+import { useToast } from "@/hooks/useToast";
+import { useState } from "react";
+
+function generateSuggestions(currentPrice: number, condition: string): number[] {
+  if (!currentPrice || currentPrice <= 0) return [];
+  const round = (v: number): number => {
+    if (currentPrice < 5) return Math.round(v * 10) / 10;
+    if (currentPrice < 50) return Math.round(v * 2) / 2;
+    if (currentPrice < 200) return Math.round(v);
+    if (currentPrice < 1000) return Math.round(v / 5) * 5;
+    return Math.round(v / 10) * 10;
+  };
+  const pcts = [0.02, 0.05, 0.1, 0.15, 0.2];
+  const suggestions = pcts.map((pct) => {
+    const offset = currentPrice * pct;
+    const raw = condition === "GREATER_THAN" ? currentPrice + offset : currentPrice - offset;
+    return round(raw);
+  });
+  return [...new Set(suggestions)].filter((v) => v > 0);
 }
 
-export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({
-    symbol: "",
-    condition: "GREATER_THAN",
-    targetPrice: "",
-  });
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState("");
+const defaultForm = { symbol: "", condition: "GREATER_THAN", targetPrice: "" };
 
-  const fetchAlerts = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.get("/alerts");
-      setAlerts(data.data);
-    } catch {}
-    setLoading(false);
+function AlertsContent() {
+  const searchParams = useSearchParams();
+  const { active, triggered, loading, create, remove } = useAlerts();
+  const { validated, validating, symError, validate, reset: resetSym } = useSymbolValidation();
+  const { toast, success, error: toastError } = useToast();
+
+  const [form, setForm] = useState({ ...defaultForm, symbol: searchParams.get("symbol") || "" });
+  const [creating, setCreating] = useState(false);
+  const [formError, setFormError] = useState("");
+  const validateTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const suggestions = validated
+    ? generateSuggestions(validated.currentPrice, form.condition)
+    : [];
+
+  useEffect(() => {
+    const sym = searchParams.get("symbol");
+    if (sym) validate(sym);
+  }, []);
+
+  const handleSymbolChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setForm((f) => ({ ...f, symbol: val }));
+    if (validateTimer.current) clearTimeout(validateTimer.current);
+    if (val.trim().length >= 1) {
+      validateTimer.current = setTimeout(() => validate(val), 600);
+    } else {
+      resetSym();
+    }
   };
 
-  const createAlert = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setFormError("");
+    if (!form.symbol.trim()) return setFormError("Symbol is required.");
+    if (!form.targetPrice) return setFormError("Target price is required.");
+    if (!validated) return setFormError("Please enter a valid symbol first.");
+    if (+form.targetPrice <= 0) return setFormError("Target price must be greater than 0.");
+
     setCreating(true);
     try {
-      await api.post("/alerts", {
-        symbol: form.symbol.toUpperCase(),
-        condition: form.condition,
+      await create({
+        symbol: form.symbol.trim().toUpperCase(),
+        condition: form.condition as "GREATER_THAN" | "LESS_THAN",
         targetPrice: +form.targetPrice,
       });
-
-      setForm({
-        symbol: "",
-        condition: "GREATER_THAN",
-        targetPrice: "",
-      });
-
-      fetchAlerts();
+      setForm({ ...defaultForm });
+      resetSym();
+      success("Alert created!");
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to create alert.");
+      setFormError(err.message || "Failed to create alert.");
     } finally {
       setCreating(false);
     }
   };
 
-  const deleteAlert = async (id: string) => {
-    await api.delete(`/alerts/${id}`);
-    setAlerts((prev) => prev.filter((a) => a._id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      await remove(id);
+      success("Alert deleted.");
+    } catch {
+      toastError("Failed to delete.");
+    }
   };
 
-  useEffect(() => {
-    fetchAlerts();
-  }, []);
+  const allAlerts = [...active, ...triggered];
 
+  return (
+    <>
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <div className="mb-6">
+          <div className="flex items-center gap-2">
+            <IconAlerts size={22} className="text-emerald-400" aria-hidden="true" />
+            <h1 className="text-2xl font-bold text-white">Price Alerts</h1>
+          </div>
+          <p className="text-gray-500 text-sm mt-1">Alerts are checked automatically every 5 minutes</p>
+        </div>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+          <h2 className="text-sm font-semibold text-white mb-4">Create New Alert</h2>
+
+          {formError && <AlertBanner variant="error" className="mb-4">{formError}</AlertBanner>}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            <div>
+              <Input
+                label="Stock Symbol"
+                required
+                placeholder="e.g. AAPL, TSLA, NVDA"
+                value={form.symbol}
+                onChange={handleSymbolChange}
+                onBlur={() => validate(form.symbol)}
+                error={symError || undefined}
+                success={!!validated && !symError}
+                rightAddon={
+                  validating ? <Spinner size="xs" aria-hidden /> :
+                  validated && !symError ? <IconCheck size={14} className="text-emerald-400" /> :
+                  undefined
+                }
+              />
+              {validated && !symError && (
+                <div className="mt-1.5 flex items-center gap-2 text-xs flex-wrap">
+                  <span className="text-emerald-400 font-medium">{validated.symbol}</span>
+                  <span className="text-gray-500">·</span>
+                  <span className="text-gray-400">
+                    Current: <span className="text-white font-semibold">${validated.currentPrice.toFixed(2)}</span>
+                  </span>
+                  <span className={`font-medium flex items-center gap-1 ${validated.percentChange >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    {validated.percentChange >= 0
+                      ? <IconTrendingUp size={12} />
+                      : <IconTrendingDown size={12} />}
+                    {Math.abs(validated.percentChange).toFixed(2)}%
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <Select
+              label="Condition"
+              required
+              value={form.condition}
+              onChange={(e) => setForm((f) => ({ ...f, condition: e.target.value }))}
+              options={[
+                { value: "GREATER_THAN", label: "Price rises ABOVE target" },
+                { value: "LESS_THAN", label: "Price drops BELOW target" },
+              ]}
+            />
+          </div>
+
+          <div className="mb-4">
+            <Input
+              label="Target Price ($)"
+              required
+              type="number"
+              placeholder="Enter target price"
+              value={form.targetPrice}
+              onChange={(e) => setForm((f) => ({ ...f, targetPrice: e.target.value }))}
+              min="0.01"
+              step="0.01"
+            />
+
+            {validated && suggestions.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-500 mb-2 font-medium">Suggested targets</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((s, i) => {
+                    const pct = ((s - validated.currentPrice) / validated.currentPrice) * 100;
+                    const isActive = form.targetPrice === String(s);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, targetPrice: String(s) }))}
+                        className={`flex flex-col items-center px-3 py-2 rounded-xl border text-xs transition-all ${
+                          isActive
+                            ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-300"
+                            : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-gray-300"
+                        }`}
+                      >
+                        <span className="font-bold text-sm text-white">${s.toFixed(2)}</span>
+                        <span className={isActive ? "text-emerald-400" : "text-gray-500"}>
+                          {form.condition === "GREATER_THAN" ? "+" : "-"}{Math.abs(pct).toFixed(0)}%
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <Button
+            fullWidth
+            loading={creating}
+            disabled={!validated || !!symError}
+            leftIcon={<IconBellAdd size={14} />}
+            onClick={handleCreate}
+          >
+            Set Price Alert
+          </Button>
+
+          {!validated && !symError && !validating && (
+            <p className="text-center text-xs text-gray-600 mt-2">Enter a valid symbol above to enable the alert button</p>
+          )}
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <Spinner size="lg" label="Loading alerts…" />
+          </div>
+        ) : (
+          <>
+            {active.length > 0 && (
+              <div className="mb-5">
+                <h3 className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">
+                  Active · {active.length}
+                </h3>
+                <div className="space-y-2">
+                  {active.map((a) => <AlertRow key={a._id} alert={a} onDelete={handleDelete} />)}
+                </div>
+              </div>
+            )}
+
+            {triggered.length > 0 && (
+              <div className="mb-5">
+                <h3 className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-2">
+                  Triggered · {triggered.length}
+                </h3>
+                <div className="space-y-2">
+                  {triggered.map((a) => <AlertRow key={a._id} alert={a} onDelete={handleDelete} triggered />)}
+                </div>
+              </div>
+            )}
+
+            {allAlerts.length === 0 && (
+              <EmptyState
+                Icon={IconBellOff}
+                title="No alerts yet"
+                description="Create your first alert above"
+              />
+            )}
+          </>
+        )}
+      </div>
+
+      {toast && <Toast message={toast.message} type={toast.type} />}
+    </>
+  );
+}
+
+function AlertRow({
+  alert,
+  onDelete,
+  triggered = false,
+}: {
+  alert: { _id: string; symbol: string; condition: string; targetPrice: number; isTriggered: boolean; triggeredAt?: string; triggeredPrice?: number; createdAt: string };
+  onDelete: (id: string) => void;
+  triggered?: boolean;
+}) {
+  return (
+    <div className={`flex items-center justify-between rounded-xl px-4 py-3 border transition-colors ${
+      triggered ? "bg-emerald-500/5 border-emerald-500/25" : "bg-gray-900 border-gray-800 hover:border-gray-700"
+    }`}>
+      <div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-bold text-white text-sm">{alert.symbol}</span>
+          <span className="text-xs text-gray-400 flex items-center gap-1">
+            {alert.condition === "GREATER_THAN"
+              ? <IconTrendingUp size={12} className="text-emerald-400" />
+              : <IconTrendingDown size={12} className="text-red-400" />}
+            <span>
+              {alert.condition === "GREATER_THAN" ? "above" : "below"}{" "}
+              <span className="text-white font-medium">${alert.targetPrice.toLocaleString()}</span>
+            </span>
+          </span>
+          {triggered ? (
+            <Badge variant="emerald">
+              <IconCheck size={10} />
+              Triggered @ ${alert.triggeredPrice}
+            </Badge>
+          ) : (
+            <Badge variant="blue">Watching</Badge>
+          )}
+        </div>
+        <p className="text-xs text-gray-600 mt-0.5">
+          Set {new Date(alert.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+          {alert.triggeredAt && (
+            <span> · Triggered {new Date(alert.triggeredAt).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+          )}
+        </p>
+      </div>
+      <button
+        onClick={() => onDelete(alert._id)}
+        aria-label={`Delete alert for ${alert.symbol}`}
+        className="ml-4 shrink-0 text-red-400/70 hover:text-red-400 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded"
+      >
+        <IconTrash size={16} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+export default function AlertsPage() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-950">
         <Navbar />
-
-        <main className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
-          <h1 className="text-lg sm:text-2xl font-bold text-white mb-4 sm:mb-6">
-            Price Alerts
-          </h1>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 sm:p-6 mb-6">
-            <h2 className="text-sm font-semibold text-gray-300 mb-4">
-              Create New Alert
-            </h2>
-
-            {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
-
-            <form onSubmit={createAlert} className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <input
-                  placeholder="Symbol (e.g. AAPL)"
-                  value={form.symbol}
-                  onChange={(e) => setForm({ ...form, symbol: e.target.value })}
-                  required
-                  className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
-                />
-
-                <div className="relative w-full">
-                  <select
-                    value={form.condition}
-                    onChange={(e) =>
-                      setForm({ ...form, condition: e.target.value })
-                    }
-                    className="appearance-none w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 pr-10 text-sm text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
-                  >
-                    <option value="GREATER_THAN" className="text-sm">
-                      Greater Than
-                    </option>
-                    <option value="LESS_THAN">Less Than</option>
-                  </select>
-
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none flex items-center gap-1">
-                    {form.condition === "GREATER_THAN" ? (
-                      <TrendingUp size={16} className="text-emerald-400" />
-                    ) : (
-                      <TrendingDown size={16} className="text-red-400" />
-                    )}
-                    <ChevronDown size={16} />
-                  </div>
-                </div>
-
-                <div className="flex gap-2 sm:col-span-1 col-span-1">
-                  <input
-                    type="number"
-                    placeholder="Target Price"
-                    value={form.targetPrice}
-                    onChange={(e) =>
-                      setForm({ ...form, targetPrice: e.target.value })
-                    }
-                    required
-                    min="0"
-                    step="0.01"
-                    className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
-                  />
-
-                  <button
-                    type="submit"
-                    disabled={creating}
-                    className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition-colors whitespace-nowrap"
-                  >
-                    {creating ? "..." : "Set"}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-
-          {loading ? (
-            <div className="flex justify-center py-10 sm:py-12">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : alerts.length === 0 ? (
-            <p className="text-center text-gray-500 py-10 sm:py-12 text-sm sm:text-base">
-              No alerts set yet.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {alerts.map((alert) => (
-                <div
-                  key={alert._id}
-                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl px-3 sm:px-4 py-3 border ${
-                    alert.isTriggered
-                      ? "bg-emerald-500/5 border-emerald-500/30"
-                      : "bg-gray-900 border-gray-800"
-                  }`}
-                >
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-bold text-white text-sm sm:text-base">
-                        {alert.symbol}
-                      </span>
-
-                      <span className="text-xs text-gray-400">
-                        {alert.condition === "GREATER_THAN" ? ">" : "<"} ₹
-                        {alert.targetPrice}
-                      </span>
-
-                      {alert.isTriggered && (
-                        <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full">
-                          Triggered @ ₹{alert.triggeredPrice}
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="text-xs text-gray-500">
-                      Created: {new Date(alert.createdAt).toLocaleDateString()}
-                      {alert.triggeredAt &&
-                        ` · Triggered: ${new Date(
-                          alert.triggeredAt,
-                        ).toLocaleString()}`}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => deleteAlert(alert._id)}
-                    className="text-xs text-red-400 hover:text-red-300 transition-colors self-start sm:self-auto cursor-pointer"
-                  >
-                    Delete
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </main>
+        <Suspense fallback={<div className="flex justify-center py-20"><Spinner size="lg" /></div>}>
+          <AlertsContent />
+        </Suspense>
       </div>
     </ProtectedRoute>
   );
