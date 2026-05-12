@@ -3,7 +3,7 @@ const Alert = require('../models/Alert');
 const { getQuote } = require('../services/stockService');
 
 const checkAlerts = async () => {
-  console.log('[AlertChecker] Running alert check...');
+  
 
   try {
     const activeAlerts = await Alert.find({ isTriggered: false });
@@ -39,7 +39,7 @@ const checkAlerts = async () => {
             triggeredPrice: price,
           })
         );
-        console.log(`[AlertChecker] Alert triggered: ${alert.symbol} @ ${price} (target: ${alert.condition} ${alert.targetPrice})`);
+      
       }
     }
 
