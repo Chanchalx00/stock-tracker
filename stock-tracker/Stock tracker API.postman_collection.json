@@ -1,0 +1,540 @@
+{
+  "info": {
+    "_postman_id": "a9cfbe62-9b0e-420e-97b5-6046b6ce69f4",
+    "name": "Stock tracker API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "46673268",
+    "_collection_link": "https://go.postman.co/collection/46673268-a9cfbe62-9b0e-420e-97b5-6046b6ce69f4?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "SignUp",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"name\": \"John Doe\",\r\n  \"email\": \"john@example.com\",\r\n  \"password\": \"123456\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{ProdURL}}/api/auth/signup",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"email\": \"john@example.com\",\r\n  \"password\": \"123456\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{ProdURL}}/api/auth/login",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/auth/me",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Stocks",
+      "item": [
+        {
+          "name": "Search Stocks",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/stocks/search?q=ds",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "stocks",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "ds"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stock Quote",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/stocks/quote/DS",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "stocks",
+                "quote",
+                "DS"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stock Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/stocks/validate/AAPL",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "stocks",
+                "validate",
+                "AAPL"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get recommended",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/stocks/recommended",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "stocks",
+                "recommended"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Watchlist",
+      "item": [
+        {
+          "name": "Get Watchlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/watchlist",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "watchlist"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add to Watchlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"symbol\": \"AAPL\",\r\n  \"companyName\": \"Apple Inc.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{ProdURL}}/api/watchlist",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "watchlist"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete from Watchlist",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/watchlist/AAPL",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "watchlist",
+                "AAPL"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Alerts",
+      "item": [
+        {
+          "name": "Get Alerts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/alerts",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "alerts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Alert",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"symbol\": \"AAPL\",\r\n  \"condition\": \"GREATER_THAN\",\r\n  \"targetPrice\": 220\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{ProdURL}}/api/alerts",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "alerts"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Alert",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/alerts/6a02a7e606260a3dc13ace16",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "alerts",
+                "6a02a7e606260a3dc13ace16"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Portfolio",
+      "item": [
+        {
+          "name": "Get Portfolio",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/portfolio",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "portfolio"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Portfolio Item",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"symbol\": \"AAPL\",\r\n  \"quantity\": 10,\r\n  \"buyPrice\": 180,\r\n  \"companyName\": \"Apple Inc.\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{ProdURL}}/api/portfolio",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "portfolio"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Portfolio item",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZhMDJhNTAyMDYyNjBhM2RjMTNhY2UxNCIsImlhdCI6MTc3ODU1ODM0MiwiZXhwIjoxNzc5MTYzMTQyfQ.XgG1h-giK3e6cU8tuExNbbNyA4aMwd4z0cQITnr-cwA",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{ProdURL}}/api/portfolio/6a02a8e506260a3dc13ace17",
+              "host": [
+                "{{ProdURL}}"
+              ],
+              "path": [
+                "api",
+                "portfolio",
+                "6a02a8e506260a3dc13ace17"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health check",
+      "item": [
+        {
+          "name": "check health",
+          "request": {
+            "method": "GET",
+            "header": []
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
