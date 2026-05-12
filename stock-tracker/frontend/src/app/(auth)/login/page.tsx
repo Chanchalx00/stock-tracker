@@ -5,7 +5,14 @@ import { useAuth } from "@/context/AuthContext";
 import { AlertBanner } from "@/components/ui/AlertBanner";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
-import { IconTrendingUp, IconMail, IconLock, IconEye, IconEyeOff } from "@/lib/icons";
+import {
+  IconTrendingUp,
+  IconMail,
+  IconLock,
+  IconEye,
+  IconEyeOff,
+} from "@/lib/icons";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -13,6 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +29,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(form.email, form.password);
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed.");
     } finally {
@@ -33,7 +42,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <IconTrendingUp size={28} className="text-emerald-400" aria-hidden="true" />
+            <IconTrendingUp
+              size={28}
+              className="text-emerald-400"
+              aria-hidden="true"
+            />
             <h1 className="text-3xl font-bold text-emerald-400">Stocklytics</h1>
           </div>
           <p className="text-gray-400 text-sm">Sign in to your account</p>
@@ -68,7 +81,11 @@ export default function LoginPage() {
                 aria-label={showPassword ? "Hide password" : "Show password"}
                 className="pointer-events-auto text-gray-400 hover:text-gray-300 transition-colors"
               >
-                {showPassword ? <IconEyeOff size={14} /> : <IconEye size={14} />}
+                {showPassword ? (
+                  <IconEyeOff size={14} />
+                ) : (
+                  <IconEye size={14} />
+                )}
               </button>
             }
             autoComplete="current-password"
@@ -86,8 +103,10 @@ export default function LoginPage() {
 
         <p className="text-center text-gray-400 text-sm mt-4">
           No account?{" "}
-          <Link href="/signup"  className="text-emerald-400 underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
->
+          <Link
+            href="/signup"
+            className="text-emerald-400 underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded"
+          >
             Create one
           </Link>
         </p>
