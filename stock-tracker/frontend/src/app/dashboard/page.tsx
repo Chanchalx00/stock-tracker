@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -58,42 +57,29 @@ interface SearchResult {
 export default function DashboardPage() {
   const router = useRouter();
 
-  const {
-    toast,
-    success,
-    error: toastError,
-  } = useToast();
+  const { toast, success, error: toastError } = useToast();
 
-  const [recommended, setRecommended] = useState<
-    StockData[]
-  >([]);
+  const [recommended, setRecommended] = useState<StockData[]>([]);
 
   const [recLoading, setRecLoading] = useState(true);
 
   const [query, setQuery] = useState("");
 
-  const [results, setResults] = useState<
-    SearchResult[]
-  >([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
 
   const [searching, setSearching] = useState(false);
 
-  const [modalStock, setModalStock] =
-    useState<StockData | null>(null);
+  const [modalStock, setModalStock] = useState<StockData | null>(null);
 
-  const [fetchingDetail, setFetchingDetail] =
-    useState<string | null>(null);
+  const [fetchingDetail, setFetchingDetail] = useState<string | null>(null);
 
-  const [addingWatch, setAddingWatch] =
-    useState<string | null>(null);
+  const [addingWatch, setAddingWatch] = useState<string | null>(null);
 
   const loadRecommended = async () => {
     setRecLoading(true);
 
     try {
-      const { data } = await api.get(
-        "/stocks/recommended"
-      );
+      const { data } = await api.get("/stocks/recommended");
 
       setRecommended(data.data || []);
     } catch {
@@ -123,8 +109,8 @@ export default function DashboardPage() {
                 volume: quote.volume,
                 change: quote.change,
               }
-            : stock
-        )
+            : stock,
+        ),
       );
 
       setModalStock((prev) => {
@@ -144,12 +130,10 @@ export default function DashboardPage() {
 
         return prev;
       });
-    }
+    },
   );
 
-  const handleSearch = async (
-    e: React.FormEvent
-  ) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!query.trim()) return;
@@ -159,24 +143,18 @@ export default function DashboardPage() {
 
     try {
       const { data } = await api.get(
-        `/stocks/search?q=${encodeURIComponent(
-          query
-        )}`
+        `/stocks/search?q=${encodeURIComponent(query)}`,
       );
 
       const valid = (data.data || []).filter(
         (r: SearchResult) =>
-          r.type === "Common Stock" ||
-          r.type === "ADR" ||
-          r.type === ""
+          r.type === "Common Stock" || r.type === "ADR" || r.type === "",
       );
 
       setResults(valid.slice(0, 8));
 
       if (!valid.length) {
-        toastError(
-          "No results found. Try a different symbol."
-        );
+        toastError("No results found. Try a different symbol.");
       }
     } catch {
       toastError("Search failed. Please try again.");
@@ -188,7 +166,7 @@ export default function DashboardPage() {
   const openDetails = async (
     symbol: string,
     name?: string,
-    prefetched?: StockData
+    prefetched?: StockData,
   ) => {
     if (prefetched) {
       setModalStock(prefetched);
@@ -198,9 +176,7 @@ export default function DashboardPage() {
     setFetchingDetail(symbol);
 
     try {
-      const { data } = await api.get(
-        `/stocks/quote/${symbol}`
-      );
+      const { data } = await api.get(`/stocks/quote/${symbol}`);
 
       setModalStock({
         ...data.data,
@@ -210,17 +186,14 @@ export default function DashboardPage() {
       toastError(
         err.response?.status === 404
           ? `No price data available for ${symbol}.`
-          : `Could not fetch details for ${symbol}.`
+          : `Could not fetch details for ${symbol}.`,
       );
     } finally {
       setFetchingDetail(null);
     }
   };
 
-  const handleAddWatchlist = async (
-    symbol: string,
-    name: string
-  ) => {
+  const handleAddWatchlist = async (symbol: string, name: string) => {
     setAddingWatch(symbol);
 
     try {
@@ -231,10 +204,7 @@ export default function DashboardPage() {
 
       success(`Added ${symbol} to watchlist`);
     } catch (err: any) {
-      toastError(
-        err.response?.data?.message ||
-          "Failed to add to watchlist."
-      );
+      toastError(err.response?.data?.message || "Failed to add to watchlist.");
     } finally {
       setAddingWatch(null);
     }
@@ -263,39 +233,25 @@ export default function DashboardPage() {
             </div>
 
             <p className="text-gray-500 text-sm mt-1">
-              Live stock prices · Search symbols ·
-              Track favourites
+              Live stock prices · Search symbols · Track favourites
             </p>
           </div>
 
-          <form
-            onSubmit={handleSearch}
-            className="flex gap-2 mb-10"
-          >
+          <form onSubmit={handleSearch} className="flex gap-2 mb-10">
             <div className="flex-1">
               <Input
                 value={query}
-                onChange={(e) =>
-                  setQuery(e.target.value)
-                }
+                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by symbol or company name..."
-                leftAddon={
-                  <IconSearch size={14} />
-                }
+                leftAddon={<IconSearch size={14} />}
               />
             </div>
 
             <Button
               type="submit"
-              disabled={
-                searching || !query.trim()
-              }
+              disabled={searching || !query.trim()}
               loading={searching}
-              leftIcon={
-                !searching ? (
-                  <IconSearch size={14} />
-                ) : undefined
-              }
+              leftIcon={!searching ? <IconSearch size={14} /> : undefined}
             >
               Search
             </Button>
@@ -305,16 +261,13 @@ export default function DashboardPage() {
             <section className="mb-10">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
-                  Search Results (
-                  {results.length})
+                  Search Results ({results.length})
                 </h2>
 
                 <Button
                   variant="ghost"
                   size="xs"
-                  leftIcon={
-                    <IconClose size={12} />
-                  }
+                  leftIcon={<IconClose size={12} />}
                   onClick={() => setResults([])}
                 >
                   Clear
@@ -325,41 +278,32 @@ export default function DashboardPage() {
                 {results.map((r) => (
                   <div
                     key={r.symbol}
-                    className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3.5 hover:border-gray-700 transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3.5 hover:border-gray-700 transition-colors"
                   >
-                    <div className="min-w-0 mr-4">
-                      <div className="flex items-center gap-2">
+                    {/* Left content */}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-white">
                           {r.displaySymbol}
                         </span>
 
-                        <Badge variant="gray">
-                          {r.type || "Stock"}
-                        </Badge>
+                        <Badge variant="gray">{r.type || "Stock"}</Badge>
                       </div>
 
-                      <p className="text-gray-500 text-xs truncate mt-0.5">
+                      <p className="text-gray-500 text-xs truncate sm:whitespace-normal mt-0.5">
                         {r.description}
                       </p>
                     </div>
 
-                    <div className="flex gap-2 shrink-0">
+                    {/* Actions */}
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:shrink-0">
                       <Button
                         variant="outline"
                         size="xs"
-                        loading={
-                          fetchingDetail ===
-                          r.symbol
-                        }
-                        leftIcon={
-                          <IconEye size={12} />
-                        }
-                        onClick={() =>
-                          openDetails(
-                            r.symbol,
-                            r.description
-                          )
-                        }
+                        className="w-full sm:w-auto"
+                        loading={fetchingDetail === r.symbol}
+                        leftIcon={<IconEye size={12} />}
+                        onClick={() => openDetails(r.symbol, r.description)}
                       >
                         Details
                       </Button>
@@ -367,20 +311,11 @@ export default function DashboardPage() {
                       <Button
                         variant="secondary"
                         size="xs"
-                        loading={
-                          addingWatch ===
-                          r.symbol
-                        }
-                        leftIcon={
-                          <IconBookmarkAdd
-                            size={12}
-                          />
-                        }
+                        className="w-full sm:w-auto"
+                        loading={addingWatch === r.symbol}
+                        leftIcon={<IconBookmarkAdd size={12} />}
                         onClick={() =>
-                          handleAddWatchlist(
-                            r.symbol,
-                            r.description
-                          )
+                          handleAddWatchlist(r.symbol, r.description)
                         }
                       >
                         Watch
@@ -408,17 +343,14 @@ export default function DashboardPage() {
                 </div>
 
                 <p className="text-gray-500 text-xs mt-0.5">
-                  Popular stocks with live
-                  market data
+                  Popular stocks with live market data
                 </p>
               </div>
 
               <Button
                 variant="secondary"
                 size="sm"
-                leftIcon={
-                  <IconRefresh size={12} />
-                }
+                leftIcon={<IconRefresh size={12} />}
                 onClick={loadRecommended}
                 loading={recLoading}
               >
@@ -468,12 +400,8 @@ export default function DashboardPage() {
                     key={stock.symbol}
                     symbol={stock.symbol}
                     companyName={stock.name}
-                    currentPrice={
-                      stock.currentPrice
-                    }
-                    percentChange={
-                      stock.percentChange
-                    }
+                    currentPrice={stock.currentPrice}
+                    percentChange={stock.percentChange}
                     high={stock.high}
                     low={stock.low}
                     volume={stock.volume}
@@ -484,15 +412,9 @@ export default function DashboardPage() {
                         variant="outline"
                         size="xs"
                         fullWidth
-                        leftIcon={
-                          <IconEye size={12} />
-                        }
+                        leftIcon={<IconEye size={12} />}
                         onClick={() =>
-                          openDetails(
-                            stock.symbol,
-                            stock.name,
-                            stock
-                          )
+                          openDetails(stock.symbol, stock.name, stock)
                         }
                       >
                         Details
@@ -502,18 +424,12 @@ export default function DashboardPage() {
                         variant="secondary"
                         size="xs"
                         fullWidth
-                        loading={
-                          addingWatch ===
-                          stock.symbol
-                        }
-                        leftIcon={
-                          <IconPlus size={12} />
-                        }
+                        loading={addingWatch === stock.symbol}
+                        leftIcon={<IconPlus size={12} />}
                         onClick={() =>
                           handleAddWatchlist(
                             stock.symbol,
-                            stock.name ||
-                              stock.symbol
+                            stock.name || stock.symbol,
                           )
                         }
                       >
@@ -530,23 +446,12 @@ export default function DashboardPage() {
 
       <StockDetailModal
         stock={modalStock}
-        onClose={() =>
-          setModalStock(null)
-        }
-        onAddWatchlist={
-          handleAddWatchlist
-        }
-        onCreateAlert={
-          handleCreateAlert
-        }
+        onClose={() => setModalStock(null)}
+        onAddWatchlist={handleAddWatchlist}
+        onCreateAlert={handleCreateAlert}
       />
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-        />
-      )}
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </ProtectedRoute>
   );
 }

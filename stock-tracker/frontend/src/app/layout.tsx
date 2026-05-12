@@ -24,6 +24,14 @@ export const metadata: Metadata = {
     description:
       "Real-time stock tracking, alerts, watchlist, and portfolio P&L.",
     locale: "en_US",
+    url:"/",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+      },
+    ],
   },
 
   twitter: {
