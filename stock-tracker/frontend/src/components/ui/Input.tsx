@@ -49,7 +49,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         <div className="relative flex items-center">
           {leftAddon && (
             <span
-              aria-hidden="true"
+            
               className="absolute left-3 text-gray-500 pointer-events-none"
             >
               {leftAddon}
@@ -90,7 +90,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
 
           {rightAddon && (
             <span
-              aria-hidden="true"
+              
               className="absolute right-3 text-gray-500 pointer-events-none"
             >
               {rightAddon}
