@@ -1,26 +1,33 @@
 'use client';
-import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/context/AuthContext';
+import { Spinner } from '@/components/ui';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
-  const router = useRouter();
+  const router              = useRouter();
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push('/login');
+      router.replace('/login');
     }
   }, [user, isLoading, router]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950">
-        <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <main
+        role="main"
+        aria-busy="true"
+        aria-label="Authenticating…"
+        className="min-h-screen flex items-center justify-center bg-gray-950"
+      >
+        <Spinner size="lg" label="Checking authentication…" />
+      </main>
     );
   }
 
   if (!user) return null;
+
   return <>{children}</>;
 }

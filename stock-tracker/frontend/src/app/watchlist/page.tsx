@@ -1,57 +1,75 @@
-'use client';
-import { useEffect, useState } from 'react';
-import ProtectedRoute from '@/components/ProtectedRoute';
-import Navbar from '@/components/Navbar';
-import StockCard from '@/components/StockCard';
-import api from '@/lib/api';
+"use client";
 
-interface WatchItem { _id: string; symbol: string; companyName: string; }
-interface Quote { currentPrice: number; percentChange: number; high: number; low: number; }
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Navbar from "@/components/Navbar";
+import Toast from "@/components/Toast";
+import StockCard from "@/components/StockCard";
+import Button from "@/components/ui/Button";
+import { Spinner } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/EmptyState";
+
+import {
+  IconWatchlist,
+  IconTrash,
+  IconBookmarked,
+} from "@/lib/icons";
+
+import { useWatchlist } from "@/hooks/useWatchlist";
+import { useToast } from "@/hooks/useToast";
+import { useState, useEffect } from "react";
+import api from "@/lib/api";
+
+interface Quote {
+  currentPrice: number;
+  percentChange: number;
+  high: number;
+  low: number;
+  volume: number;
+}
 
 export default function WatchlistPage() {
-  const [items, setItems] = useState<WatchItem[]>([]);
+  const { items, loading, remove } = useWatchlist();
+  const { toast, success, error: toastError } = useToast();
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
-  const [loading, setLoading] = useState(true);
 
-  const fetchWatchlist = async () => {
-    setLoading(true);
+  useEffect(() => {
+    items.forEach(async (item) => {
+      try {
+        const q = await api.get(`/stocks/quote/${item.symbol}`);
+        setQuotes((prev) => ({ ...prev, [item.symbol]: q.data.data }));
+      } catch {}
+    });
+  }, [items]);
+
+  const handleRemove = async (symbol: string) => {
     try {
-      const { data } = await api.get('/watchlist');
-      setItems(data.data);
-    
-      data.data.forEach(async (item: WatchItem) => {
-        try {
-          const q = await api.get(`/stocks/quote/${item.symbol}`);
-          setQuotes((prev) => ({ ...prev, [item.symbol]: q.data.data }));
-        } catch {}
-      });
-    } catch {}
-    setLoading(false);
+      await remove(symbol);
+      success(`Removed ${symbol} from watchlist.`);
+    } catch {
+      toastError("Failed to remove from watchlist.");
+    }
   };
-
-  const remove = async (symbol: string) => {
-    await api.delete(`/watchlist/${symbol}`);
-    setItems((prev) => prev.filter((i) => i.symbol !== symbol));
-  };
-
-  useEffect(() => { fetchWatchlist(); }, []);
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-950">
         <Navbar />
         <main className="max-w-5xl mx-auto px-4 py-8">
-          <h1 className="text-2xl font-bold text-white mb-6">My Watchlist</h1>
+          <div className="mb-6 flex items-center gap-2">
+            <IconWatchlist size={22} className="text-emerald-400" aria-hidden="true" />
+            <h1 className="text-2xl font-bold text-white">My Watchlist</h1>
+          </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="w-8 h-8 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+              <Spinner size="lg" label="Loading watchlist…" />
             </div>
           ) : items.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <p>Your watchlist is empty.</p>
-              <p className="text-sm mt-1">Search for stocks and add them here.</p>
-            </div>
+            <EmptyState
+              Icon={IconBookmarked}
+              title="Your watchlist is empty"
+              description="Search for stocks on the dashboard and add them here."
+            />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {items.map((item) => {
@@ -60,18 +78,26 @@ export default function WatchlistPage() {
                   <StockCard
                     key={item._id}
                     symbol={item.symbol}
+                    companyName={item.companyName}
                     currentPrice={q?.currentPrice}
                     percentChange={q?.percentChange}
                     high={q?.high}
                     low={q?.low}
+                    volume={q?.volume}
+                    asArticle
                   >
-                    <p className="text-xs text-gray-500 mb-2">{item.companyName}</p>
-                    <button
-                      onClick={() => remove(item.symbol)}
-                      className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer"
-                    >
-                      Remove
-                    </button>
+                    <div className="pt-2 border-t border-gray-800 mt-1">
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        leftIcon={<IconTrash size={12} />}
+                        onClick={() => handleRemove(item.symbol)}
+                        className="text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                        aria-label={`Remove ${item.symbol} from watchlist`}
+                      >
+                        Remove
+                      </Button>
+                    </div>
                   </StockCard>
                 );
               })}
@@ -79,6 +105,7 @@ export default function WatchlistPage() {
           )}
         </main>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </ProtectedRoute>
   );
 }
