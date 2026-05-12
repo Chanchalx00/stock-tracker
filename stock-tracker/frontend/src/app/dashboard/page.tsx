@@ -1,186 +1,298 @@
 "use client";
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Suspense } from "react";
+
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
+import StockDetailModal from "@/components/StockDetailModal";
+import Toast from "@/components/Toast";
 import StockCard from "@/components/StockCard";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import { Spinner } from "@/components/ui/Spinner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Badge } from "@/components/ui/Badge";
+
+import {
+  IconSearch,
+  IconTrendingUp,
+  IconRefresh,
+  IconPlus,
+  IconEye,
+  IconClose,
+  IconBarChart,
+  IconBookmarkAdd,
+  IconSearchEmpty,
+  IconActivity,
+} from "@/lib/icons";
+
+import { useToast } from "@/hooks/useToast";
 import api from "@/lib/api";
 
-interface StockResult {
+interface StockData {
+  symbol: string;
+  name?: string;
+  currentPrice: number;
+  high: number;
+  low: number;
+  open: number;
+  prevClose?: number;
+  volume: number;
+  change: number;
+  percentChange: number;
+}
+
+interface SearchResult {
   description: string;
   displaySymbol: string;
   symbol: string;
   type: string;
 }
 
-interface Quote {
-  symbol: string;
-  currentPrice: number;
-  high: number;
-  low: number;
-  change: number;
-  percentChange: number;
-}
-
 export default function DashboardPage() {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<StockResult[]>([]);
-  const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [loadingQuote, setLoadingQuote] = useState(false);
-  const [addingToWatchlist, setAddingToWatchlist] = useState("");
-  const [toast, setToast] = useState("");
+  const router = useRouter();
+  const { toast, success, error: toastError } = useToast();
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(""), 3000);
+  const [recommended, setRecommended] = useState<StockData[]>([]);
+  const [recLoading, setRecLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [modalStock, setModalStock] = useState<StockData | null>(null);
+  const [fetchingDetail, setFetchingDetail] = useState<string | null>(null);
+  const [addingWatch, setAddingWatch] = useState<string | null>(null);
+
+  const loadRecommended = async () => {
+    setRecLoading(true);
+    try {
+      const { data } = await api.get("/stocks/recommended");
+      setRecommended(data.data || []);
+    } catch {
+      toastError("Could not load recommended stocks.");
+    } finally {
+      setRecLoading(false);
+    }
   };
+
+  useEffect(() => { loadRecommended(); }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
     setSearching(true);
-    setSelectedQuote(null);
+    setResults([]);
     try {
-      const { data } = await api.get(`/stocks/search?q=${query}`);
-      setResults(data.data || []);
+      const { data } = await api.get(`/stocks/search?q=${encodeURIComponent(query)}`);
+      const valid = (data.data || []).filter(
+        (r: SearchResult) => r.type === "Common Stock" || r.type === "ADR" || r.type === "",
+      );
+      setResults(valid.slice(0, 8));
+      if (!valid.length) toastError("No results found. Try a different symbol.");
     } catch {
-      showToast("Search failed. Try again.");
+      toastError("Search failed. Please try again.");
     } finally {
       setSearching(false);
     }
   };
 
-  const fetchQuote = async (symbol: string) => {
-    setLoadingQuote(true);
+  const openDetails = async (symbol: string, name?: string, prefetched?: StockData) => {
+    if (prefetched) { setModalStock(prefetched); return; }
+    setFetchingDetail(symbol);
     try {
       const { data } = await api.get(`/stocks/quote/${symbol}`);
-      setSelectedQuote(data.data);
-    } catch {
-      showToast("Could not fetch quote.");
+      setModalStock({ ...data.data, name: name || symbol });
+    } catch (err: any) {
+      toastError(err.response?.status === 404
+        ? `No price data available for ${symbol}.`
+        : `Could not fetch details for ${symbol}.`);
     } finally {
-      setLoadingQuote(false);
+      setFetchingDetail(null);
     }
   };
 
-  const addToWatchlist = async (symbol: string, name: string) => {
-    setAddingToWatchlist(symbol);
+  const handleAddWatchlist = async (symbol: string, name: string) => {
+    setAddingWatch(symbol);
     try {
       await api.post("/watchlist", { symbol, companyName: name });
-      showToast(`${symbol} added to watchlist!`);
+      success(`Added ${symbol} to watchlist`);
     } catch (err: any) {
-      showToast(err.response?.data?.message || "Failed to add.");
+      toastError(err.response?.data?.message || "Failed to add to watchlist.");
     } finally {
-      setAddingToWatchlist("");
+      setAddingWatch(null);
     }
   };
+
+  const handleCreateAlert = (symbol: string) => router.push(`/alerts?symbol=${symbol}`);
 
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-950">
         <Navbar />
-        <main className="max-w-5xl mx-auto px-4 py-8">
-          <h1 className="text-2xl font-bold text-white mb-6">Search Stocks</h1>
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          <div className="mb-8">
+            <div className="flex items-center gap-2">
+              <IconBarChart className="text-emerald-400" size={22} aria-hidden="true" />
+              <h1 className="text-2xl font-bold text-white">Market Dashboard</h1>
+            </div>
+            <p className="text-gray-500 text-sm mt-1">Live stock prices · Search symbols · Track favourites</p>
+          </div>
 
-          <form onSubmit={handleSearch} className="flex gap-2 mb-6">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by symbol or name... e.g. AAPL, RELIANCE"
-              className="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500"
-            />
-            <button
+          <form onSubmit={handleSearch} className="flex gap-2 mb-10">
+            <div className="flex-1">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by symbol or company name..."
+                leftAddon={<IconSearch size={14} />}
+              />
+            </div>
+            <Button
               type="submit"
-              disabled={searching}
-              className="px-5 py-3 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-semibold cursor-pointer rounded-xl transition-colors text-sm"
+              disabled={searching || !query.trim()}
+              loading={searching}
+              leftIcon={!searching ? <IconSearch size={14} /> : undefined}
             >
-              {searching ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                "Search"
-              )}
-            </button>
+              Search
+            </Button>
           </form>
 
-          {selectedQuote && (
-            <div className="mb-6">
-              <StockCard
-                symbol={selectedQuote.symbol}
-                currentPrice={selectedQuote.currentPrice}
-                percentChange={selectedQuote.percentChange}
-                high={selectedQuote.high}
-                low={selectedQuote.low}
-              >
-                <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-800 text-xs text-gray-400">
-                  <span>
-                    Change:{" "}
-                    <span
-                      className={
-                        selectedQuote.change >= 0
-                          ? "text-emerald-400"
-                          : "text-red-400"
-                      }
-                    >
-                      {selectedQuote.change}
-                    </span>
-                  </span>
-                  <span>
-                    High:{" "}
-                    <span className="text-white">{selectedQuote.high}</span>
-                  </span>
-                </div>
-              </StockCard>
-            </div>
-          )}
-
           {results.length > 0 && (
-            <div className="space-y-2">
-              {results.map((r) => (
-                <div
-                  key={r.symbol}
-                  className="bg-gray-900 border border-gray-800 rounded-xl p-4 hover:border-gray-700 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-white font-semibold text-sm">
-                        {r.displaySymbol}
-                      </p>
-
-                      <p className="text-gray-500 text-xs mt-1 wrap-break-words leading-relaxed">
-                        {r.description}
-                      </p>
+            <section className="mb-10">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-xs text-gray-500 uppercase tracking-wider font-semibold">
+                  Search Results ({results.length})
+                </h2>
+                <Button variant="ghost" size="xs" leftIcon={<IconClose size={12} />} onClick={() => setResults([])}>
+                  Clear
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {results.map((r) => (
+                  <div
+                    key={r.symbol}
+                    className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-xl px-4 py-3.5 hover:border-gray-700 transition-colors"
+                  >
+                    <div className="min-w-0 mr-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white">{r.displaySymbol}</span>
+                        <Badge variant="gray">{r.type || "Stock"}</Badge>
+                      </div>
+                      <p className="text-gray-500 text-xs truncate mt-0.5">{r.description}</p>
                     </div>
-
-                    <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-                      <button
-                        onClick={() => fetchQuote(r.symbol)}
-                        disabled={loadingQuote}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 cursor-pointer transition-colors whitespace-nowrap"
+                    <div className="flex gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        loading={fetchingDetail === r.symbol}
+                        leftIcon={<IconEye size={12} />}
+                        onClick={() => openDetails(r.symbol, r.description)}
                       >
-                        Quote
-                      </button>
-
-                      <button
-                        onClick={() => addToWatchlist(r.symbol, r.description)}
-                        disabled={addingToWatchlist === r.symbol}
-                        className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 cursor-pointer transition-colors whitespace-nowrap"
+                        Details
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        loading={addingWatch === r.symbol}
+                        leftIcon={<IconBookmarkAdd size={12} />}
+                        onClick={() => handleAddWatchlist(r.symbol, r.description)}
                       >
-                        + Watch
-                      </button>
+                        Watch
+                      </Button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </section>
           )}
-        </main>
 
-        {toast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-sm px-4 py-2 rounded-full border border-gray-700 shadow-lg">
-            {toast}
-          </div>
-        )}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <IconTrendingUp size={18} className="text-emerald-400" aria-hidden="true" />
+                  <h2 className="text-lg font-bold text-white">Recommended Stocks</h2>
+                </div>
+                <p className="text-gray-500 text-xs mt-0.5">Popular stocks with live market data</p>
+              </div>
+              <Button variant="secondary" size="sm" leftIcon={<IconRefresh size={12} />} onClick={loadRecommended} loading={recLoading}>
+                Refresh
+              </Button>
+            </div>
+
+            {recLoading ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="bg-gray-900 border border-gray-800 rounded-xl p-4 animate-pulse">
+                    <div className="flex justify-between mb-3">
+                      <div className="space-y-2">
+                        <div className="h-4 w-16 bg-gray-800 rounded" />
+                        <div className="h-3 w-24 bg-gray-800 rounded" />
+                      </div>
+                      <div className="space-y-2 flex flex-col items-end">
+                        <div className="h-4 w-16 bg-gray-800 rounded" />
+                        <div className="h-3 w-12 bg-gray-800 rounded" />
+                      </div>
+                    </div>
+                    <div className="h-3 w-full bg-gray-800 rounded mb-2" />
+                    <div className="h-3 w-3/4 bg-gray-800 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : recommended.length === 0 ? (
+              <EmptyState Icon={IconActivity} title="Could not load market data." description="Try refreshing or check your connection." />
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {recommended.map((stock) => (
+                  <StockCard
+                    key={stock.symbol}
+                    symbol={stock.symbol}
+                    companyName={stock.name}
+                    currentPrice={stock.currentPrice}
+                    percentChange={stock.percentChange}
+                    high={stock.high}
+                    low={stock.low}
+                    volume={stock.volume}
+                    asArticle
+                  >
+                    <div className="flex gap-2 pt-2 border-t border-gray-800 mt-1">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        fullWidth
+                        leftIcon={<IconEye size={12} />}
+                        onClick={() => openDetails(stock.symbol, stock.name, stock)}
+                      >
+                        Details
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="xs"
+                        fullWidth
+                        loading={addingWatch === stock.symbol}
+                        leftIcon={<IconPlus size={12} />}
+                        onClick={() => handleAddWatchlist(stock.symbol, stock.name || stock.symbol)}
+                      >
+                        Watch
+                      </Button>
+                    </div>
+                  </StockCard>
+                ))}
+              </div>
+            )}
+          </section>
+        </main>
       </div>
+
+      <StockDetailModal
+        stock={modalStock}
+        onClose={() => setModalStock(null)}
+        onAddWatchlist={handleAddWatchlist}
+        onCreateAlert={handleCreateAlert}
+      />
+
+      {toast && <Toast message={toast.message} type={toast.type} />}
     </ProtectedRoute>
   );
 }
