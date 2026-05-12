@@ -8,38 +8,65 @@ import Button from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 
-import {
-  IconWatchlist,
-  IconTrash,
-  IconBookmarked,
-} from "@/lib/icons";
+import { IconWatchlist, IconTrash, IconBookmarked } from "@/lib/icons";
 
 import { useWatchlist } from "@/hooks/useWatchlist";
 import { useToast } from "@/hooks/useToast";
+import { useStockSocket } from "@/hooks/useStockSocket";
+
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
 
 interface Quote {
+  symbol: string;
   currentPrice: number;
   percentChange: number;
   high: number;
   low: number;
   volume: number;
+  change: number;
+  timestamp: string;
 }
 
 export default function WatchlistPage() {
   const { items, loading, remove } = useWatchlist();
+
   const { toast, success, error: toastError } = useToast();
+
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
 
   useEffect(() => {
-    items.forEach(async (item) => {
-      try {
-        const q = await api.get(`/stocks/quote/${item.symbol}`);
-        setQuotes((prev) => ({ ...prev, [item.symbol]: q.data.data }));
-      } catch {}
-    });
+    const fetchInitialQuotes = async () => {
+      const data: Record<string, Quote> = {};
+
+      await Promise.all(
+        items.map(async (item) => {
+          try {
+            const q = await api.get(`/stocks/quote/${item.symbol}`);
+
+            data[item.symbol] = q.data.data;
+          } catch {}
+        }),
+      );
+
+      setQuotes(data);
+    };
+
+    if (items.length) {
+      fetchInitialQuotes();
+    }
   }, [items]);
+
+  useStockSocket(
+    items.map((item) => item.symbol),
+
+    (quote) => {
+      setQuotes((prev) => ({
+        ...prev,
+        [quote.symbol]: quote,
+      }));
+    },
+  );
 
   const handleRemove = async (symbol: string) => {
     try {
@@ -54,9 +81,15 @@ export default function WatchlistPage() {
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-950">
         <Navbar />
+
         <main className="max-w-5xl mx-auto px-4 py-8">
           <div className="mb-6 flex items-center gap-2">
-            <IconWatchlist size={22} className="text-emerald-400" aria-hidden="true" />
+            <IconWatchlist
+              size={22}
+              className="text-emerald-400"
+              aria-hidden="true"
+            />
+
             <h1 className="text-2xl font-bold text-white">My Watchlist</h1>
           </div>
 
@@ -74,6 +107,7 @@ export default function WatchlistPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {items.map((item) => {
                 const q = quotes[item.symbol];
+
                 return (
                   <StockCard
                     key={item._id}
@@ -105,6 +139,7 @@ export default function WatchlistPage() {
           )}
         </main>
       </div>
+
       {toast && <Toast message={toast.message} type={toast.type} />}
     </ProtectedRoute>
   );
