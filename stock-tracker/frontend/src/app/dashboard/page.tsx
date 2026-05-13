@@ -280,7 +280,7 @@ export default function DashboardPage() {
                     key={r.symbol}
                     className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-gray-900 border border-gray-800 rounded-xl px-4 py-3.5 hover:border-gray-700 transition-colors"
                   >
-                    {/* Left content */}
+                   
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-white">
@@ -295,7 +295,6 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    {/* Actions */}
                     <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:shrink-0">
                       <Button
                         variant="outline"

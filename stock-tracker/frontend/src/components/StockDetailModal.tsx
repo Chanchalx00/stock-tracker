@@ -1,8 +1,8 @@
-'use client';
-import { useEffect, useRef } from 'react';
-import { cn, formatPrice, formatPct, formatVolume } from '@/lib/utils';
-import { ChangeBadge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
+"use client";
+import { useEffect, useRef } from "react";
+import { cn, formatPrice, formatPct, formatVolume } from "@/lib/utils";
+import { ChangeBadge } from "@/components/ui/Badge";
+import Button from "@/components/ui/Button";
 import {
   IconClose,
   IconArrowUp,
@@ -16,33 +16,33 @@ import {
   IconActivity,
   IconTarget,
   IconPercent,
-} from '@/lib/icons';
-import type { LucideIcon } from 'lucide-react';
+} from "@/lib/icons";
+import type { LucideIcon } from "lucide-react";
 
 interface StockDetail {
-  symbol:        string;
-  name?:         string;
-  currentPrice:  number;
-  high:          number;
-  low:           number;
-  open:          number;
-  prevClose?:    number;
-  volume:        number;
-  change:        number;
+  symbol: string;
+  name?: string;
+  currentPrice: number;
+  high: number;
+  low: number;
+  open: number;
+  prevClose?: number;
+  volume: number;
+  change: number;
   percentChange: number;
 }
 
 interface StockDetailModalProps {
-  stock:           StockDetail | null;
-  onClose:         () => void;
+  stock: StockDetail | null;
+  onClose: () => void;
   onAddWatchlist?: (symbol: string, name: string) => void;
-  onCreateAlert?:  (symbol: string) => void;
+  onCreateAlert?: (symbol: string) => void;
 }
 
 interface StatRowItem {
-  label:   string;
-  value:   string;
-  Icon:    LucideIcon;
+  label: string;
+  value: string;
+  Icon: LucideIcon;
   colored: boolean;
 }
 
@@ -52,58 +52,108 @@ export default function StockDetailModal({
   onAddWatchlist,
   onCreateAlert,
 }: StockDetailModalProps) {
-  const panelRef    = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
-  const isPositive  = (stock?.percentChange ?? 0) >= 0;
-
+  const isPositive = (stock?.percentChange ?? 0) >= 0;
 
   useEffect(() => {
     if (!stock) return;
     closeBtnRef.current?.focus();
 
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { onClose(); return; }
-      if (e.key !== 'Tab' || !panelRef.current) return;
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
       const focusable = panelRef.current.querySelectorAll<HTMLElement>(
-        'button,[href],input,select,[tabindex]:not([tabindex="-1"])'
+        'button,[href],input,select,[tabindex]:not([tabindex="-1"])',
       );
       const first = focusable[0];
-      const last  = focusable[focusable.length - 1];
+      const last = focusable[focusable.length - 1];
       if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        }
       } else {
-        if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
       }
     };
 
-    document.addEventListener('keydown', handleKey);
-    document.body.style.overflow = 'hidden';
+    document.addEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener('keydown', handleKey);
-      document.body.style.overflow = '';
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
     };
   }, [stock, onClose]);
 
   if (!stock) return null;
 
   const stats: StatRowItem[] = [
-    { label: 'Current Price', value: formatPrice(stock.currentPrice), Icon: IconDollar,   colored: false },
-    { label: 'Day High',      value: formatPrice(stock.high),         Icon: IconArrowUp,  colored: false },
-    { label: 'Day Low',       value: formatPrice(stock.low),          Icon: IconArrowDown,colored: false },
-    { label: 'Open',          value: formatPrice(stock.open),         Icon: IconActivity, colored: false },
-    { label: 'Prev. Close',   value: formatPrice(stock.prevClose),    Icon: IconBarChart, colored: false },
-    { label: 'Change ($)',
-      value: stock.change >= 0 ? `+${formatPrice(stock.change)}` : formatPrice(stock.change),
+    {
+      label: "Current Price",
+      value: formatPrice(stock.currentPrice),
+      Icon: IconDollar,
+      colored: false,
+    },
+    {
+      label: "Day High",
+      value: formatPrice(stock.high),
+      Icon: IconArrowUp,
+      colored: false,
+    },
+    {
+      label: "Day Low",
+      value: formatPrice(stock.low),
+      Icon: IconArrowDown,
+      colored: false,
+    },
+    {
+      label: "Open",
+      value: formatPrice(stock.open),
+      Icon: IconActivity,
+      colored: false,
+    },
+    {
+      label: "Prev. Close",
+      value: formatPrice(stock.prevClose),
+      Icon: IconBarChart,
+      colored: false,
+    },
+    {
+      label: "Change ($)",
+      value:
+        stock.change >= 0
+          ? `+${formatPrice(stock.change)}`
+          : formatPrice(stock.change),
       Icon: stock.change >= 0 ? IconArrowUp : IconArrowDown,
       colored: true,
     },
-    { label: 'Change (%)',    value: formatPct(stock.percentChange),  Icon: IconPercent,  colored: true  },
-    { label: 'Volume',        value: formatVolume(stock.volume),      Icon: IconVolume,   colored: false },
+    {
+      label: "Change (%)",
+      value: formatPct(stock.percentChange),
+      Icon: IconPercent,
+      colored: true,
+    },
+    {
+      label: "Volume",
+      value: formatVolume(stock.volume),
+      Icon: IconVolume,
+      colored: false,
+    },
   ];
 
   const rangeWidth =
     stock.high > stock.low
-      ? Math.min(100, ((stock.currentPrice - stock.low) / (stock.high - stock.low)) * 100)
+      ? Math.min(
+          100,
+          ((stock.currentPrice - stock.low) / (stock.high - stock.low)) * 100,
+        )
       : 50;
 
   return (
@@ -150,9 +200,9 @@ export default function StockDetailModal({
             onClick={onClose}
             aria-label="Close stock details dialog"
             className={cn(
-              'absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full',
-              'text-gray-500 hover:text-white hover:bg-gray-800 transition-colors',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500'
+              "absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full",
+              "text-gray-500 hover:text-white hover:bg-gray-800 transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
             )}
           >
             <IconClose size={16} aria-hidden="true" />
@@ -160,27 +210,37 @@ export default function StockDetailModal({
         </header>
 
         <section aria-labelledby="stats-title" className="px-6 py-4">
-          <h3 id="stats-title" className="sr-only">Market statistics</h3>
+          <h3 id="stats-title" className="sr-only">
+            Market statistics
+          </h3>
           <dl className="grid grid-cols-2 gap-2.5">
             {stats.map(({ label, value, Icon, colored }) => (
-              <div key={label} className="bg-gray-800/60 rounded-xl px-3.5 py-3">
+              <div
+                key={label}
+                className="bg-gray-800/60 rounded-xl px-3.5 py-3"
+              >
                 <dt className="flex items-center gap-1.5 text-xs text-gray-500 mb-1.5 font-medium">
                   <Icon
                     size={11}
                     aria-hidden="true"
-                    className={colored
-                      ? isPositive ? 'text-emerald-400' : 'text-red-400'
-                      : 'text-gray-600'
+                    className={
+                      colored
+                        ? isPositive
+                          ? "text-emerald-400"
+                          : "text-red-400"
+                        : "text-gray-600"
                     }
                   />
                   {label}
                 </dt>
                 <dd
                   className={cn(
-                    'text-sm font-semibold',
+                    "text-sm font-semibold",
                     colored
-                      ? isPositive ? 'text-emerald-400' : 'text-red-400'
-                      : 'text-white'
+                      ? isPositive
+                        ? "text-emerald-400"
+                        : "text-red-400"
+                      : "text-white",
                   )}
                 >
                   {value}
@@ -196,11 +256,19 @@ export default function StockDetailModal({
               <p className="text-xs text-gray-500 font-medium">Day Range</p>
               <div className="flex items-center gap-3 text-xs text-gray-500">
                 <span className="flex items-center gap-1">
-                  <IconArrowDown size={10} aria-hidden="true" className="text-red-400" />
+                  <IconArrowDown
+                    size={10}
+                    aria-hidden="true"
+                    className="text-red-400"
+                  />
                   {formatPrice(stock.low)}
                 </span>
                 <span className="flex items-center gap-1">
-                  <IconArrowUp size={10} aria-hidden="true" className="text-emerald-400" />
+                  <IconArrowUp
+                    size={10}
+                    aria-hidden="true"
+                    className="text-emerald-400"
+                  />
                   {formatPrice(stock.high)}
                 </span>
               </div>
@@ -216,8 +284,8 @@ export default function StockDetailModal({
               <div
                 aria-hidden="true"
                 className={cn(
-                  'absolute left-0 h-full rounded-full transition-all duration-500',
-                  isPositive ? 'bg-emerald-500' : 'bg-red-500'
+                  "absolute left-0 h-full rounded-full transition-all duration-500",
+                  isPositive ? "bg-emerald-500" : "bg-red-500",
                 )}
                 style={{ width: `${rangeWidth}%` }}
               />
