@@ -164,8 +164,11 @@ stock-tracker/                          ← GitHub repo root
     │   │   ├── services/
     │   │   │   └── stockService.js         # Finnhub wrapper + Redis cache check
     │   │   │
+    │   │   ├── socket/
+    │   │   │   └── socketManager.js        # emits socket
+    │   │   │
     │   │   ├── jobs/
-    │   │   │   └── alertChecker.js         # cron, checks every 5 min, emits socket
+    │   │   │   └── alertChecker.js         # cron, checks every 5 min
     │   │   │
     │   │   └── app.js                      # Express + Socket.IO + HTTP server
     │   │
