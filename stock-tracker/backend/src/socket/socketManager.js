@@ -81,7 +81,7 @@ const stopEmitting = (symbol) => {
   }
 };
 
-// Broadcast to all connected clients (used by alert checker)
+
 const broadcastAlert = (userId, alert) => {
   if (io) {
     io.to(`user:${userId}`).emit('alert:triggered', alert);
