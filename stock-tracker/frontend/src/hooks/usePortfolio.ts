@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 
 export interface Holding {
   _id:          string;
@@ -55,8 +56,8 @@ export function usePortfolio() {
     try {
       await api.post('/portfolio', payload);
       await fetch(); 
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message ?? 'Failed to add holding.');
+    } catch (err) {
+      throw new Error(getErrorMessage(err, 'Failed to add holding.'));
     }
   }, [fetch]);
 

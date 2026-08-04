@@ -1,20 +1,24 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import api from '@/lib/api';
+import api, { setAccessToken } from '@/lib/api';
+import { disconnectSocket } from '@/lib/socket';
 
 interface User {
   id: string;
   name: string;
   email: string;
+  avatar?: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -22,48 +26,77 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    let cancelled = false;
+
+    api
+      .post('/auth/refresh')
+      .then(({ data }) => {
+        if (cancelled) return;
+        setAccessToken(data.token);
+        setUser(data.user);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAccessToken(null);
+        setUser(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async (email: string, password: string) => {
     const { data } = await api.post('/auth/login', { email, password });
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setToken(data.token);
+    setAccessToken(data.token);
     setUser(data.user);
-   
+  };
+
+  const loginWithGoogle = async (credential: string) => {
+    const { data } = await api.post('/auth/google', { credential });
+    setAccessToken(data.token);
+    setUser(data.user);
   };
 
   const signup = async (name: string, email: string, password: string) => {
     const { data } = await api.post('/auth/signup', { name, email, password });
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    setToken(data.token);
+    setAccessToken(data.token);
     setUser(data.user);
     router.push('/dashboard');
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setToken(null);
+  const forgotPassword = async (email: string) => {
+    await api.post('/auth/forgot-password', { email });
+  };
+
+  const resetPassword = async (token: string, password: string) => {
+    const { data } = await api.post('/auth/reset-password', { token, password });
+    setAccessToken(data.token);
+    setUser(data.user);
+  };
+
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Even if the server call fails, still clear the local session.
+    }
+    setAccessToken(null);
     setUser(null);
+    disconnectSocket();
     router.push('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, signup, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{ user, login, loginWithGoogle, signup, forgotPassword, resetPassword, logout, isLoading }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,41 +1,37 @@
 const Watchlist = require('../models/Watchlist');
+const { ApiError } = require('../utils/ApiError');
+const { ApiResponse } = require('../utils/ApiResponse');
+const { asyncHandler } = require('../utils/asyncHandler');
 
 // GET /api/watchlist
-exports.getWatchlist = async (req, res) => {
-  try {
-    const items = await Watchlist.find({ userId: req.user._id }).sort({ addedAt: -1 });
-    res.status(200).json({ success: true, data: items });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+exports.getWatchlist = asyncHandler(async (req, res) => {
+  const items = await Watchlist.find({ userId: req.user._id }).sort({ addedAt: -1 });
+  res.status(200).json(new ApiResponse(200, 'Watchlist fetched.', items));
+});
 
 // POST /api/watchlist
-exports.addToWatchlist = async (req, res) => {
+exports.addToWatchlist = async (req, res, next) => {
   try {
     const { symbol, companyName } = req.body;
-    if (!symbol) return res.status(400).json({ success: false, message: 'Symbol is required.' });
+    if (!symbol) throw new ApiError(400, 'Symbol is required.');
 
     const item = await Watchlist.create({
       userId: req.user._id,
       symbol: symbol.toUpperCase(),
       companyName: companyName || '',
     });
-    res.status(201).json({ success: true, data: item });
+    res.status(201).json(new ApiResponse(201, 'Added to watchlist.', item));
   } catch (error) {
-    if (error.code === 11000)
-      return res.status(409).json({ success: false, message: 'Stock already in watchlist.' });
-    res.status(500).json({ success: false, message: error.message });
+    if (error.code === 11000) {
+      return next(new ApiError(409, 'Stock already in watchlist.'));
+    }
+    next(error);
   }
 };
 
 // DELETE /api/watchlist/:symbol
-exports.removeFromWatchlist = async (req, res) => {
-  try {
-    const { symbol } = req.params;
-    await Watchlist.findOneAndDelete({ userId: req.user._id, symbol: symbol.toUpperCase() });
-    res.status(200).json({ success: true, message: 'Removed from watchlist.' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+exports.removeFromWatchlist = asyncHandler(async (req, res) => {
+  const { symbol } = req.params;
+  await Watchlist.findOneAndDelete({ userId: req.user._id, symbol: symbol.toUpperCase() });
+  res.status(200).json(new ApiResponse(200, 'Removed from watchlist.'));
+});

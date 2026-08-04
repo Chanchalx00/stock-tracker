@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 
 export interface PriceAlert {
   _id:             string;
@@ -40,8 +41,8 @@ export function useAlerts() {
     try {
       const { data } = await api.post('/alerts', payload);
       setAlerts((prev) => [data.data, ...prev]);
-    } catch (err: any) {
-      throw new Error(err.response?.data?.message ?? 'Failed to create alert.');
+    } catch (err) {
+      throw new Error(getErrorMessage(err, 'Failed to create alert.'));
     }
   }, []);
 

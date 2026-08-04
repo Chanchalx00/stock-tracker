@@ -1,8 +1,8 @@
 <div align="center">
 
-# 📈 Stocklytics — Stock Market Alert & Portfolio Tracker
+# 📈 Stocklytics — Indian Stock Market Tracker
 
-**A full-stack real-time stock market application.**
+**A full-stack, real-time NSE/BSE stock tracker: live prices, TradingView-style candlestick charts, watchlists, portfolio P&L, price alerts, and market news.**
 
 [![Live App](https://img.shields.io/badge/Live%20App-Vercel-black?style=for-the-badge&logo=vercel)](https://stock-tracker-lime-theta.vercel.app/)
 [![API](https://img.shields.io/badge/Backend%20API-Render-46E3B7?style=for-the-badge&logo=render)](https://stock-tracker-backend-twb1.onrender.com/health)
@@ -21,8 +21,11 @@
 | 🖥 **Frontend (Vercel)** | https://stock-tracker-lime-theta.vercel.app/ |
 | ⚙️ **Backend API (Render)** | https://stock-tracker-backend-twb1.onrender.com |
 | 💓 **Health Check** | https://stock-tracker-backend-twb1.onrender.com/health |
+| 📖 **API Docs (Swagger)** | `<backend-url>/api/docs` — local/staging only, disabled in production |
 
-> ⚠️ **Cold Start** — Render free tier spins down after 15 min inactivity. First request may take 20–30 seconds.
+> ⚠️ **Cold Start** — Render's free tier spins down after 15 min of inactivity; the first request can take 20–30 seconds.
+>
+> ⚠️ **Redeploy needed** — this README describes the current codebase. If the links above haven't been redeployed since, they may still be running an older build (US-stock/Finnhub version with localStorage auth) rather than what's documented here.
 
 ---
 
@@ -33,55 +36,73 @@
 - [Project Structure](#-project-structure)
 - [Getting Started Locally](#-getting-started-locally)
 - [Environment Variables](#-environment-variables)
+- [Authentication & Sessions](#-authentication--sessions)
 - [Architecture](#-architecture)
 - [Real-Time with Socket.IO](#-real-time-with-socketio)
 - [Redis Caching](#-redis-caching)
 - [API Reference](#-api-reference)
 - [Database Design](#-database-design)
 - [Background Jobs](#-background-jobs)
+- [Data Sources & Known Limitations](#-data-sources--known-limitations)
 - [Deployment](#-deployment)
-- [Postman Collection](#-postman-collection)
-- [Evaluation Criteria](#-evaluation-criteria)
+- [What This Project Demonstrates](#-what-this-project-demonstrates)
 - [Assumptions & Tradeoffs](#-assumptions--tradeoffs)
 
 ---
 
 ## ✨ Features
 
-### 1. 🔐 Authentication
-- JWT-based **Signup / Login / Protected Routes**
-- Passwords hashed with **bcryptjs** (12 salt rounds — never stored plain)
-- Token attached to every API request via Axios interceptors
-- Auto-redirect to `/login` on 401 globally
+### 🔐 Authentication & Sessions
+- Signup / login with server-side email format + password strength validation
+- **Access + refresh token pattern**, not a single long-lived JWT in localStorage:
+  - Short-lived (15 min) access token, returned in the response body, kept **in memory only** on the frontend
+  - Long-lived (30 day) refresh token in an **httpOnly, sameSite cookie** — never readable by JavaScript
+  - Refresh tokens are **rotated** on every use and stored server-side only as a SHA-256 hash
+  - Logout **revokes** the refresh token and **blacklists** the current access token's `jti` so it can't be reused before it naturally expires
+  - Axios interceptor silently calls `/auth/refresh` on a 401, retries the original request once, and only redirects to `/login` if that fails too
+  - Session survives a page reload via a silent refresh call on mount — no token ever touches `localStorage`
 
-### 2. 🔍 Stock Search Module
-- Search stocks by symbol or company name via **Finnhub API**
-- Click **Details** button → opens modal showing: Current Price, Day High/Low, Open, Prev Close, Volume, % Change, day range progress bar
-- Invalid/delisted symbols silently filtered (`c: 0` from Finnhub → 404 response)
+### 📊 Dashboard
+- 12 curated large-cap NSE stocks with live prices, refreshed over WebSocket every second
+- Nifty 50 & Sensex index cards with a live area chart (5-minute historical bars, live-updating current bar)
+- Symbol/company search with live quote previews, rendered as the same stock cards as the recommended list
+- A small "has news" indicator on any card with recent headlines
 
-### 3. 📋 Watchlist
-- Add / remove stocks from personal watchlist
-- Live prices loaded in parallel on the watchlist page
-- Compound MongoDB index `{ userId, symbol }` prevents duplicates
+### 🕯️ Charts
+- Dedicated `/charts` page styled after TradingView: dark theme, candlesticks, a volume histogram pane, a floating OHLC legend that tracks the crosshair, and a background watermark of the active symbol
+- A watchlist sidebar (Nifty 50 + the two indices) with a "See more" toggle, live-updating prices, click to load into the chart
+- Live-updating — ticks are bucketed into the same 5-minute candles the historical data uses, so the chart never re-scales or "shrinks" as data streams in
 
-### 4. 🔔 Price Alert System *(Main Feature)*
-- Create alerts: **GREATER\_THAN** or **LESS\_THAN** a target price
-- **Real-time symbol validation** (debounced 600ms) before allowing alert creation
-- **Smart price suggestion chips** — 2%, 5%, 10%, 15%, 20% offsets, rounded to book prices
-- **node-cron background job** checks all active alerts every **5 minutes**
-- When condition matches → `isTriggered: true`, `triggeredAt`, `triggeredPrice` saved
-- **Socket.IO** pushes `alert:triggered` event to the owner in real time
+### 📋 Watchlist & 💼 Portfolio
+- Add/remove stocks from a personal watchlist with live prices
+- Track holdings (symbol, quantity, buy price) with live P&L, computed fresh on every fetch — never stored stale
+- Portfolio summary: total invested, current value, total P&L, return %
 
-### 5. 💼 Portfolio P&L Module
-- Add holdings: Symbol, Quantity, Buy Price
-- Live P&L calculated on every fetch (Redis-cached prices)
-- Portfolio summary: Total Invested, Current Value, Total P&L, Return %
+### 🔔 Price Alerts
+- `GREATER_THAN` / `LESS_THAN` a target price, with debounced (600ms) live symbol validation
+- Smart suggested target chips (±2/5/10/15/20%, rounded to sensible price steps)
+- Checked server-side every 5 minutes by a cron job; triggers push an `alert:triggered` Socket.IO event to the owner
 
-### 6. 📈 Dashboard — Recommended Stocks
-- 12 curated popular stocks loaded on mount
-- **Redis caches quotes for 60 seconds** — reduces Finnhub API calls massively
-- **Socket.IO pushes live price updates** to subscribed clients every ~30 seconds
-- Skeleton loading cards during initial fetch
+### 📰 News
+- Market-wide and per-stock headlines (source, published time, link out)
+- Powered by Google News RSS search — see [Data Sources & Known Limitations](#-data-sources--known-limitations)
+
+### 🖼 Company Logos
+- Real logo (or the company's site favicon) for known NSE large-caps, generated server-side as an SVG
+- Any symbol without a known logo still gets a **generated initials avatar** (server-rendered, sized to fit) — the frontend's `<img>` never actually fails to load, so there's no broken-image flash and no client-side text-truncation to fight with
+
+### 🎨 Polish
+- Framer Motion entrance/stagger animations across every page, hover/tap micro-interactions on stock cards, modal enter animation
+- Per-page SEO metadata — every route is a server component wrapping a `*Client.tsx` component, so each page gets its own `<title>`/description instead of one generic one for the whole app
+- Full ARIA pass: live regions, `aria-busy` loading states, focus-trapped modal, `aria-expanded`/`aria-current`, labelled landmarks, keyboard (Escape) support on the mobile nav drawer
+- Branded `not-found.tsx` and `error.tsx` instead of Next's defaults, plus a footer
+
+### 🛡 Backend Hardening
+- Rate limiting: a global ceiling plus a much tighter limit on `/auth/login`, `/auth/signup`, `/auth/refresh`
+- Centralized error handling (`ApiError` / `asyncHandler` / `ApiResponse`) instead of a hand-rolled try/catch per controller — consistent response shape, no leaked internal error messages
+- Server-side input validation on signup (email format, password length) and on alerts/portfolio (positive numeric price/quantity)
+- Structured logging via Winston — rotating log files, one line per request with timing, log-injection-safe
+- Auto-generated Swagger/OpenAPI docs at `/api/docs` (disabled in production)
 
 ---
 
@@ -91,139 +112,130 @@
 
 | Technology | Purpose |
 |------------|---------|
-| Next.js 14 (App Router) | React framework |
+| Next.js (App Router) | React framework — every route is a server component (`page.tsx`, metadata) wrapping a client component |
 | TypeScript | Type safety |
 | Tailwind CSS | Styling |
+| Framer Motion | Page/element animations |
+| lightweight-charts (TradingView) | Candlestick + area charts |
 | clsx + tailwind-merge | `cn()` utility |
-| Lucide React | Icons (all centralised in `lib/icons.ts`) |
-| Axios | HTTP client + JWT interceptors |
+| Lucide React | Icons (centralised in `lib/icons.ts`) |
+| Axios | HTTP client — in-memory access token, `withCredentials`, silent-refresh interceptor |
 | Socket.IO Client | Real-time price updates & alert notifications |
 
 ### Backend
 
 | Technology | Purpose |
 |------------|---------|
-| Node.js 18+ | Runtime |
-| Express.js | HTTP server |
+| Node.js 18+ / Express 5 | HTTP server |
 | MongoDB + Mongoose | Database + ODM |
-| JWT | Authentication |
+| JWT + httpOnly cookies | Access/refresh token session auth |
 | bcryptjs | Password hashing |
-| **Socket.IO** | Real-time bidirectional communication |
-| **ioredis** | Redis client for caching |
+| Socket.IO | Real-time bidirectional communication |
+| ioredis | Redis client for caching |
 | node-cron | Background alert checker |
-| Axios | Finnhub API calls |
-| helmet + cors + morgan | Security, CORS, logging |
+| express-rate-limit | Global + auth-specific rate limiting |
+| validator | Email/input validation |
+| winston | Structured, rotating file logging |
+| swagger-jsdoc + swagger-ui-express | Auto-generated API docs |
+| fast-xml-parser | Parses the Google News RSS feed |
+| helmet + cors + cookie-parser | Security headers, CORS, cookie parsing |
+
+### Data Sources
+
+| Source | Used for | Official? |
+|--------|----------|-----------|
+| Yahoo Finance (`query1/2.finance.yahoo.com`) | Live quotes, OHLC candles, symbol search | ❌ Unofficial, no key required |
+| Google News RSS | Market & per-stock news | ❌ Unofficial |
+| Clearbit logo API / Google favicon service | Company logos | ❌ Unofficial, with a generated-SVG fallback |
 
 ### Infrastructure
 
 | Service | Usage | Tier |
 |---------|-------|------|
 | MongoDB Atlas | Cloud database | M0 Free |
-| Render Redis | Quote cache + Socket.IO | Free |
+| Redis (local or Upstash) | Quote/news/search cache | Free |
 | Render.com | Backend hosting | Free |
 | Vercel | Frontend hosting | Free |
-| Finnhub API | Real-time stock data | Free |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-stock-tracker/                          ← GitHub repo root
-└── stock-tracker/                      ← project root
+stock-tracker/
+└── stock-tracker/
     │
     ├── backend/
     │   ├── src/
     │   │   ├── config/
-    │   │   │   ├── db.js               # MongoDB Atlas connection
-    │   │   │   └── redis.js            # ioredis client + cache helpers
+    │   │   │   ├── db.js                 # MongoDB Atlas connection
+    │   │   │   ├── redis.js              # ioredis client + cache helpers
+    │   │   │   └── swagger.js            # swagger-jsdoc spec (scans routes/*.js)
     │   │   │
     │   │   ├── middleware/
-    │   │   │   └── auth.js             # JWT verify middleware
+    │   │   │   ├── auth.js               # JWT verify + blacklist check
+    │   │   │   └── error.middleware.js   # Centralized error handler
     │   │   │
     │   │   ├── models/
     │   │   │   ├── User.js
+    │   │   │   ├── RefreshToken.js       # Hashed refresh tokens, TTL-indexed
     │   │   │   ├── Watchlist.js
     │   │   │   ├── Alert.js
     │   │   │   └── Holding.js
     │   │   │
-    │   │   ├── routes/
-    │   │   │   ├── auth.routes.js
-    │   │   │   ├── stock.routes.js
-    │   │   │   ├── watchlist.routes.js
-    │   │   │   ├── alert.routes.js
-    │   │   │   └── portfolio.routes.js
-    │   │   │
-    │   │   ├── controllers/
-    │   │   │   ├── auth.controller.js
-    │   │   │   ├── stock.controller.js     # recommended, search, quote, validate
-    │   │   │   ├── watchlist.controller.js
-    │   │   │   ├── alert.controller.js
-    │   │   │   └── portfolio.controller.js # live P&L calculation
+    │   │   ├── routes/                   # auth · stock · watchlist · alert · portfolio · news
+    │   │   ├── controllers/              # same modules, all asyncHandler + ApiError/ApiResponse
     │   │   │
     │   │   ├── services/
-    │   │   │   └── stockService.js         # Finnhub wrapper + Redis cache check
+    │   │   │   ├── stockService.js       # Yahoo Finance wrapper + Redis cache
+    │   │   │   ├── newsService.js        # Google News RSS wrapper + Redis cache
+    │   │   │   ├── logoService.js        # Real logo lookup + generated SVG fallback
+    │   │   │   └── token.service.js      # Access/refresh token issue, rotate, revoke, blacklist
     │   │   │
-    │   │   ├── socket/
-    │   │   │   └── socketManager.js        # emits socket
+    │   │   ├── utils/
+    │   │   │   ├── ApiError.js / ApiResponse.js / asyncHandler.js
+    │   │   │   └── logger.js             # Winston, rotating files
     │   │   │
-    │   │   ├── jobs/
-    │   │   │   └── alertChecker.js         # cron, checks every 5 min
-    │   │   │
-    │   │   └── app.js                      # Express + Socket.IO + HTTP server
+    │   │   ├── socket/socketManager.js   # Per-symbol price rooms, 1s emit interval
+    │   │   ├── jobs/alertChecker.js      # node-cron, every 5 min
+    │   │   └── app.js
     │   │
     │   ├── .env.example
-    │   ├── Dockerfile
     │   └── package.json
     │
     └── frontend/
         ├── src/
         │   ├── app/
-        │   │   ├── (auth)/login/page.tsx
-        │   │   ├── (auth)/signup/page.tsx
-        │   │   ├── dashboard/page.tsx
-        │   │   ├── watchlist/page.tsx
-        │   │   ├── alerts/page.tsx
-        │   │   ├── portfolio/page.tsx
-        │   │   ├── page.tsx
-        │   │   └── layout.tsx
+        │   │   ├── (auth)/login/{page.tsx, LoginClient.tsx}
+        │   │   ├── (auth)/signup/{page.tsx, SignupClient.tsx}
+        │   │   ├── dashboard/{page.tsx, DashboardClient.tsx}
+        │   │   ├── charts/{page.tsx, ChartsClient.tsx}
+        │   │   ├── watchlist/{page.tsx, WatchlistClient.tsx}
+        │   │   ├── alerts/{page.tsx, AlertsClient.tsx}
+        │   │   ├── portfolio/{page.tsx, PortfolioClient.tsx}
+        │   │   ├── news/{page.tsx, NewsClient.tsx}
+        │   │   ├── not-found.tsx / error.tsx
+        │   │   └── layout.tsx             # Root metadata, Footer
         │   │
         │   ├── components/
-        │   │   ├── ui/
-        │   │   │   ├── Button.tsx          # variant, size, loading, Lucide icons
-        │   │   │   ├── Input.tsx           # label, error, hint, success, addons
-        │   │   │   ├── Select.tsx
-        │   │   │   ├── Badge.tsx + ChangeBadge
-        │   │   │   ├── Spinner.tsx         # Lucide Loader2
-        │   │   │   ├── Card.tsx
-        │   │   │   ├── EmptyState.tsx
-        │   │   │   └── AlertBanner.tsx
-        │   │   │
-        │   │   ├── Navbar.tsx              # aria-current, role=banner
-        │   │   ├── ProtectedRoute.tsx
-        │   │   ├── StockCard.tsx           # dl/dt/dd, asArticle prop
-        │   │   ├── StockDetailModal.tsx    # role=dialog, focus trap, role=meter
-        │   │   └── Toast.tsx               # role=status, aria-live=polite
+        │   │   ├── ui/                    # Button, Input, Select, Badge, Spinner, Card, EmptyState, AlertBanner
+        │   │   ├── Navbar.tsx / Footer.tsx / ProtectedRoute.tsx / Toast.tsx
+        │   │   ├── StockCard.tsx / StockDetailModal.tsx / StockAvatar.tsx
+        │   │   ├── MarketIndices.tsx      # Nifty50/Sensex cards
+        │   │   ├── PriceChart.tsx         # Lightweight area chart (dashboard/modal)
+        │   │   ├── CandlestickChart.tsx   # Full TradingView-style chart (/charts)
+        │   │   ├── ChartWatchlist.tsx     # /charts sidebar
+        │   │   ├── NewsList.tsx
+        │   │   └── FadeIn.tsx / Stagger.tsx  # Framer Motion wrappers
         │   │
-        │   ├── hooks/
-        │   │   ├── useToast.ts
-        │   │   ├── useWatchlist.ts
-        │   │   ├── useAlerts.ts
-        │   │   ├── usePortfolio.ts
-        │   │   ├── useStockQuote.ts
-        │   │   └── useSymbolValidation.ts
-        │   │         
-        │   │
-        │   ├── context/
-        │   │   └── AuthContext.tsx
-        │   │
+        │   ├── hooks/           # useToast, useWatchlist, useAlerts, usePortfolio, useStockSocket, useSymbolValidation
+        │   ├── context/AuthContext.tsx
         │   └── lib/
-        │       ├── api.ts                  # Axios + interceptors
-        │       ├── icons.ts                # All Lucide icons, Icon* prefix
-        │       ├── socket.ts                # Socket.IO client
-        │       └── utils.ts                # cn(), formatPrice, formatPct, formatVolume
+        │       ├── api.ts                 # Axios: in-memory token, withCredentials, silent refresh
+        │       ├── liveChart.ts           # Shared live-tick → OHLC bucket merge logic
+        │       ├── icons.ts / socket.ts / utils.ts
         │
-        ├── .env.local.example
+        ├── .env
         └── package.json
 ```
 
@@ -237,9 +249,10 @@ stock-tracker/                          ← GitHub repo root
 node --version     # v18+
 npm  --version     # v9+
 # MongoDB locally or Atlas account
-# Redis locally or Upstash account
-# Finnhub free API key → https://finnhub.io
+# Redis locally or Upstash account (optional — caching degrades gracefully without it)
 ```
+
+No third-party API key is required — Yahoo Finance and Google News are used unauthenticated.
 
 ### 1. Clone
 
@@ -253,17 +266,8 @@ cd stock-tracker/stock-tracker
 ```bash
 cd backend
 npm install
-cp .env.example .env   # fill in values below
+cp .env.example .env   # fill in MONGO_URI and JWT_SECRET at minimum
 npm run dev
-```
-
-Expected output:
-```
-✅ MongoDB Connected: cluster0.xxxxx.mongodb.net
-[Redis] Connected to redis://localhost:6379
-[Socket.IO] Listening for connections
-🚀 Server running on port 5000
-[AlertChecker] Started — checks every 5 minutes
 ```
 
 ### 3. Start Frontend
@@ -271,7 +275,6 @@ Expected output:
 ```bash
 cd ../frontend
 npm install
-cp .env.local.example .env.local
 npm run dev
 # http://localhost:3000
 ```
@@ -285,28 +288,29 @@ npm run dev
 ```env
 # Server
 PORT=5000
+NODE_ENV=development
 
 # MongoDB
 MONGO_URI=mongodb://localhost:27017/stocktracker
-# Atlas: mongodb+srv://user:pass@cluster.mongodb.net/stocktracker?retryWrites=true&w=majority
 
-# JWT
+# JWT — short-lived access token (in the response body) + long-lived
+# refresh token (httpOnly cookie, stored server-side only as a hash).
 JWT_SECRET=replace_with_64_char_hex_string_here
-JWT_EXPIRES_IN=7d
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY_DAYS=30
 
-# Finnhub (https://finnhub.io — free tier)
-FINNHUB_API_KEY=your_finnhub_api_key
-
-# Redis
+# Redis (optional)
 REDIS_URL=redis://localhost:6379
-# Upstash: rediss://default:password@region.upstash.io:6379
-REDIS_QUOTE_TTL=60
 
-# CORS
+# CORS — must match the frontend origin exactly
 CLIENT_URL=http://localhost:3000
+
+# Logging
+LOG_LEVEL=debug
+LOG_DIR=logs
 ```
 
-### `frontend/.env.local`
+### `frontend/.env`
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000/api
@@ -320,412 +324,196 @@ NEXT_PUBLIC_SOCKET_URL=http://localhost:5000
 
 ---
 
+## 🔑 Authentication & Sessions
+
+This app deliberately does **not** store any token in `localStorage`. The flow:
+
+1. **Login/signup** → backend issues an access token (15 min, returned in the JSON body) and a refresh token (30 days, set as an `httpOnly; sameSite` cookie). The refresh token is stored server-side only as a SHA-256 hash.
+2. **Every request** → the frontend attaches the access token from an in-memory variable (`lib/api.ts`), never from storage.
+3. **Page reload** → the in-memory token is gone by design. `AuthContext` calls `POST /auth/refresh` on mount; the browser sends the httpOnly cookie automatically, the backend rotates it and returns a fresh access token, and the session is silently restored. If there's no valid cookie, the user just isn't logged in.
+4. **Access token expires mid-session** → the axios response interceptor catches the 401, calls `/auth/refresh` once (concurrent 401s share a single in-flight refresh call, since refresh tokens rotate on every use), retries the original request, and only redirects to `/login` if the refresh itself fails.
+5. **Logout** → the refresh token is deleted from the database and the current access token's `jti` is blacklisted server-side (in-memory, pruned every 5 min) so it can't be replayed even before it naturally expires.
+
+Why this over a plain JWT in `localStorage`: `localStorage` is readable by any JavaScript running on the page, so an XSS vulnerability anywhere in the app (or a compromised dependency) can exfiltrate the token directly. An httpOnly cookie can't be read by JavaScript at all, and the short-lived access token limits the blast radius even if it's somehow captured mid-flight.
+
+---
+
 ## 🏗 Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────┐
 │                  Next.js (Vercel)                         │
-│  AuthContext · Axios (JWT) · Socket.IO Client             │
-│  Hooks: useWatchlist · useAlerts · usePortfolio           │
-│         useSocket · useSymbolValidation · Debounce     │
+│  AuthContext (in-memory token) · Axios (silent refresh)   │
+│  Socket.IO Client · Framer Motion · lightweight-charts     │
 └────────────────────┬─────────────────────────────────────┘
-                     │  HTTPS REST  +  WebSocket (ws://)
+                     │  HTTPS REST (withCredentials)  +  WebSocket
 ┌────────────────────▼─────────────────────────────────────┐
 │                Express.js (Render)                        │
 │                                                           │
-│   Routes → Controllers → Services → Models               │
+│   Routes → Controllers (asyncHandler) → Services → Models │
+│   Centralized error middleware · rate limiting · winston  │
 │                                                           │
 │   Socket.IO Server                                        │
-│   ├── auth middleware (verify JWT from socket.handshake)  │
-│   ├── user joins room: user:{userId}                      │
-│   ├── subscribe:price → join room: price:{SYMBOL}         │
+│   ├── per-symbol room: price:{SYMBOL}, 1s emit interval   │
 │   └── alertChecker emits alert:triggered to owner room    │
 │                                                           │
 │   ┌──────────────┐    ┌──────────────────────────────┐   │
 │   │ MongoDB Atlas│    │ Redis (ioredis / Upstash)    │   │
-│   │ users        │    │ quote:{SYMBOL}  TTL     │    │
-│   │ watchlists   │    │ recommended:stocks TTL       │   │
-│   │ alerts       │    └──────────────────────────────┘   │
-│   │ holdings     │                                        │
+│   │ users        │    │ quote:{SYMBOL}   TTL 1s      │   │
+│   │ refreshTokens│    │ series:{SYMBOL}  TTL 60s     │   │
+│   │ watchlists   │    │ news:*           TTL 10–15m  │   │
+│   │ alerts       │    │ logo:{domain}    TTL 24h     │   │
+│   │ holdings     │    └──────────────────────────────┘   │
 │   └──────────────┘    ┌──────────────────────────────┐   │
 │                        │ node-cron (every 5 min)      │   │
 │                        │ Check alerts → emit socket   │   │
 │                        └──────────────────────────────┘   │
 └──────────────────────────────────────────────────────────┘
                          │
-                  ┌──────▼──────┐
-                  │  Finnhub    │
-                  │  Free API   │
-                  └─────────────┘
+              ┌──────────┼──────────────┐
+              ▼                         ▼
+      Yahoo Finance              Google News RSS
+      (quotes, charts,           (market + per-stock
+       search — unofficial)       headlines — unofficial)
 ```
 
 ---
 
 ## ⚡ Real-Time with Socket.IO
 
-### Server setup (`app.js`)
-
-```js
-const httpServer = require('http').createServer(app);
-const { Server }  = require('socket.io');
-const io = new Server(httpServer, {
-  cors: { origin: process.env.CLIENT_URL, credentials: true }
-});
-
-// Attach io to app so controllers and cron can access it
-app.set('io', io);
-
-// JWT auth for socket connections
-io.use((socket, next) => {
-  const token = socket.handshake.auth.token;
-  if (!token) return next(new Error('No token'));
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  socket.userId = String(decoded.id);
-  next();
-});
-
-io.on('connection', (socket) => {
-  // Each user joins their private room
-  socket.join(`user:${socket.userId}`);
-
-  // Subscribe to live price updates for a symbol
-  socket.on('subscribe:price', (symbol) => socket.join(`price:${symbol}`));
-  socket.on('unsubscribe:price', (symbol) => socket.leave(`price:${symbol}`));
-
-  socket.on('disconnect', () => {
-    console.log(`[Socket] User ${socket.userId} disconnected`);
-  });
-});
-```
-
-### Alert cron emits to the alert owner
-
-```js
-// alertChecker.js — after finding triggered alerts:
-const io = app.get('io');
-io.to(`user:${alert.userId}`).emit('alert:triggered', {
-  alertId:        alert._id,
-  symbol:         alert.symbol,
-  condition:      alert.condition,
-  targetPrice:    alert.targetPrice,
-  triggeredPrice: currentPrice,
-  triggeredAt:    new Date(),
-});
-```
-
-### Socket.IO Events Reference
+Every subscribed symbol gets its own room and its own 1-second poll interval (`EMIT_INTERVAL_MS` in `socketManager.js`) — deliberately fast, since the Redis quote cache TTL is also 1 second, so this is close to as live as the underlying (unofficial, rate-limit-unknown) Yahoo Finance endpoint can support.
 
 | Event | Direction | Payload | Description |
 |-------|-----------|---------|-------------|
-| `subscribe:price` | Client → Server | `"AAPL"` | Join symbol price room |
-| `unsubscribe:price` | Client → Server | `"AAPL"` | Leave symbol price room |
-| `price:update` | Server → Client | `{symbol, currentPrice, percentChange, ...}` | Live price push every ~30s |
+| `subscribe` | Client → Server | `["RELIANCE.NS", ...]` | Join price rooms for these symbols |
+| `unsubscribe` | Client → Server | `["RELIANCE.NS", ...]` | Leave price rooms |
+| `price:{SYMBOL}` | Server → Client | `{symbol, currentPrice, percentChange, high, low, volume, change, timestamp}` | Live tick, ~every second |
+| `alert:triggered` | Server → Client | `{alertId, symbol, condition, targetPrice, triggeredPrice, triggeredAt}` | Pushed to the alert owner when the cron job finds a match |
 
-### Client hook (`lib/socket.ts`)
-
-```ts
-import { useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
-
-export function useSocket(token: string | null) {
-  const socketRef = useRef<Socket | null>(null);
-
-  useEffect(() => {
-    if (!token) return;
-
-    const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
-      auth: { token },
-      transports: ['websocket'],
-    });
-
-    socketRef.current = socket;
-
-    return () => { socket.disconnect(); };
-  }, [token]);
-
-  return socketRef;
-}
-```
+The `useStockSocket(symbols, onQuote)` hook wraps subscribe/unsubscribe lifecycle; it's used across the dashboard, watchlist, charts page, and stock detail modal.
 
 ---
 
 ## 🗄 Redis Caching
 
-Redis reduces Finnhub API calls (free tier: 60 req/min) and improves response times.
+Redis absorbs duplicate requests for the same symbol landing within the same short window — important since the underlying quote API is unofficial and has no documented rate limit.
 
-### `config/redis.js`
+| Key Pattern | TTL | Why |
+|-------------|-----|-----|
+| `quote:{SYMBOL}` | **1s** | Short enough to feel live, long enough to dedupe near-simultaneous requests for the same symbol (e.g. the dashboard and the charts watchlist both open) |
+| `series:{SYMBOL}:{range}:{interval}` | 60s | Intraday OHLC series (charts, index cards) |
+| `search:{query}` | 300s | Symbol search results |
+| `news:market` / `news:stock:{query}:{limit}` | 600s / 900s | Google News RSS results |
+| `logo:{domain}` | 24h | Resolved logo bytes (or the fact that none were found) |
 
-```js
-const Redis = require('ioredis');
-
-const redis = new Redis(process.env.REDIS_URL, {
-  maxRetriesPerRequest: 3,
-  enableReadyCheck: false,
-});
-
-redis.on('connect', () => console.log('[Redis] Connected'));
-redis.on('error', (err) => console.error('[Redis] Error:', err.message));
-
-const getCache = async (key) => {
-  const val = await redis.get(key);
-  return val ? JSON.parse(val) : null;
-};
-
-const setCache = async (key, data, ttl = 60) => {
-  await redis.set(key, JSON.stringify(data), 'EX', ttl);
-};
-
-module.exports = { redis, getCache, setCache };
-```
-
-### Cache-aside pattern in `stockService.js`
-
-```js
-const getQuote = async (symbol) => {
-  // 1. Check cache
-  const cached = await getCache(`quote:${symbol}`);
-  if (cached) return cached;
-
-  // 2. Cache miss — call Finnhub
-  const { data } = await axios.get(`${FINNHUB_BASE}/quote`, { params: { symbol, token: API_KEY } });
-
-  if (!data || data.c === 0) throw new Error(`No price data for "${symbol}"`);
-
-  const result = { symbol, currentPrice: data.c, high: data.h, low: data.l,
-                   open: data.o, prevClose: data.pc, volume: data.v,
-                   change: +(data.c - data.pc).toFixed(2),
-                   percentChange: +(((data.c - data.pc) / data.pc) * 100).toFixed(2) };
-
-  // 3. Cache for 60 seconds
-  await setCache(`quote:${symbol}`, result, process.env.REDIS_QUOTE_TTL || 60);
-  return result;
-};
-```
-
-### Cache Keys
-
-| Key Pattern | TTL | Stored Value |
-|-------------|-----|-------------|
-| `quote:{SYMBOL}` | 60s | Full quote object |
-| `recommended:stocks` | 60s | Array of 12 stock quotes |
+Redis is optional — every cache read/write is wrapped so a Redis outage degrades to "no caching," not a crash.
 
 ---
 
 ## 📡 API Reference
 
-**Production:** `https://stock-tracker-backend-twb1.onrender.com/api`
-**Local:** `http://localhost:5000/api`
+**Local:** `http://localhost:5000/api` — full interactive docs at `/api/docs` (Swagger UI, generated from JSDoc comments on every route, always in sync with the code — treat it as the source of truth over this table).
 
-All protected routes require: `Authorization: Bearer <token>`
-
----
+All protected routes require `Authorization: Bearer <accessToken>`.
 
 ### 🔐 Auth
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `POST` | `/auth/signup` | ❌ | Register new user |
-| `POST` | `/auth/login` | ❌ | Login, returns JWT |
-| `GET` | `/auth/me` | ✅ | Get current user |
+| `POST` | `/auth/signup` | ❌ | Register — validates email format & password length |
+| `POST` | `/auth/login` | ❌ | Login |
+| `POST` | `/auth/refresh` | 🍪 cookie | Rotate the refresh token, issue a new access token |
+| `POST` | `/auth/logout` | ❌ | Revoke the refresh token + blacklist the access token |
+| `GET` | `/auth/me` | ✅ | Get the current user |
 
-**POST /auth/signup**
 ```json
-// Body
-{ "name": "Chanchal", "email": "chanchal@example.com", "password": "secret123" }
-
-// Response 201
-{ "success": true, "token": "eyJ...", "user": { "id": "...", "name": "Chanchal", "email": "chanchal@example.com" } }
+// POST /auth/login — Response 200
+{
+  "success": true, "message": "Login successful.",
+  "token": "eyJ...", "user": { "id": "...", "name": "Chanchal", "email": "..." }
+}
 ```
-
-**POST /auth/login**
-```json
-// Body
-{ "email": "chanchal@example.com", "password": "secret123" }
-
-// Response 200
-{ "success": true, "token": "eyJ...", "user": { "id": "...", "name": "Chanchal", "email": "chanchal@example.com" } }
-```
-
----
 
 ### 📊 Stocks
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET` | `/stocks/recommended` | ✅ | 12 popular stocks (Redis cached 60s) |
-| `GET` | `/stocks/search?q=AAPL` | ✅ | Search by symbol/name |
-| `GET` | `/stocks/quote/:symbol` | ✅ | Live quote (Redis cached 60s) |
-| `GET` | `/stocks/validate/:symbol` | ✅ | Validate + get price for alert suggestions |
+| `GET` | `/stocks/recommended` | ✅ | 12 curated NSE large-caps, live quotes + `hasNews` flag |
+| `GET` | `/stocks/watchlist` | ✅ | Full Nifty 50, quotes only (lighter — no news lookups) |
+| `GET` | `/stocks/indices` | ✅ | Nifty 50 & Sensex with today's intraday series |
+| `GET` | `/stocks/chart/:symbol` | ✅ | Intraday OHLC candles for any symbol |
+| `GET` | `/stocks/search?q=` | ✅ | Search NSE/BSE symbols |
+| `GET` | `/stocks/quote/:symbol` | ✅ | Current quote |
+| `GET` | `/stocks/validate/:symbol` | ✅ | Always 200 — check the `valid` field |
+| `GET` | `/stocks/logo/:symbol` | ❌ | Public — always returns an image (real logo or generated fallback) |
 
-**GET /stocks/quote/AAPL**
-```json
-// Response 200
-{
-  "success": true,
-  "data": {
-    "symbol": "AAPL", "currentPrice": 189.30,
-    "high": 191.05, "low": 187.45, "open": 188.60,
-    "prevClose": 188.01, "volume": 54320100,
-    "change": 1.29, "percentChange": 0.69
-  }
-}
-```
-
-**GET /stocks/validate/AAPL**
-```json
-{ "success": true, "valid": true, "data": { "symbol": "AAPL", "currentPrice": 189.30, ... } }
-// or
-{ "success": true, "valid": false, "message": "\"XYZ\" not found or has no market data." }
-```
-
----
-
-### 📋 Watchlist
+### 📰 News
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| `GET` | `/watchlist` | ✅ | Get user's watchlist |
-| `POST` | `/watchlist` | ✅ | Add stock |
-| `DELETE` | `/watchlist/:symbol` | ✅ | Remove stock |
+| `GET` | `/news` | ✅ | Top Indian market headlines |
+| `GET` | `/news/stock/:symbol?name=` | ✅ | Headlines for one stock |
+
+### 📋 Watchlist · 🔔 Alerts · 💼 Portfolio
+
+Standard `GET / POST / DELETE` CRUD under `/watchlist`, `/alerts`, `/portfolio` — see `/api/docs` for full request/response schemas.
 
 ```json
-// POST /watchlist Body
-{ "symbol": "TSLA", "companyName": "Tesla Inc." }
-// Response 201
-{ "success": true, "data": { "_id": "...", "symbol": "TSLA", "companyName": "Tesla Inc.", ... } }
+// POST /alerts
+{ "symbol": "RELIANCE.NS", "condition": "GREATER_THAN", "targetPrice": 1300 }
 
-// DELETE /watchlist/TSLA
-{ "success": true, "message": "TSLA removed from watchlist." }
+// POST /portfolio
+{ "symbol": "TCS.NS", "quantity": 10, "buyPrice": 3800, "companyName": "Tata Consultancy Services Ltd." }
 ```
-
----
-
-### 🔔 Alerts
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/alerts` | ✅ | All alerts (active + triggered) |
-| `POST` | `/alerts` | ✅ | Create price alert |
-| `DELETE` | `/alerts/:id` | ✅ | Delete alert |
-
-```json
-// POST /alerts Body
-{ "symbol": "NVDA", "condition": "GREATER_THAN", "targetPrice": 500 }
-// condition: "GREATER_THAN" | "LESS_THAN"
-
-// Response 201 — Active alert
-{
-  "success": true,
-  "data": {
-    "_id": "...", "symbol": "NVDA", "condition": "GREATER_THAN",
-    "targetPrice": 500, "isTriggered": false,
-    "triggeredAt": null, "triggeredPrice": null
-  }
-}
-
-// After cron fires — Triggered alert
-{
-  "_id": "...", "symbol": "NVDA", "isTriggered": true,
-  "triggeredAt": "2024-01-15T14:35:22.000Z", "triggeredPrice": 501.45
-}
-```
-
----
-
-### 💼 Portfolio
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `GET` | `/portfolio` | ✅ | Holdings with live P&L |
-| `POST` | `/portfolio` | ✅ | Add holding |
-| `DELETE` | `/portfolio/:id` | ✅ | Remove holding |
-
-```json
-// POST /portfolio Body
-{ "symbol": "AAPL", "quantity": 10, "buyPrice": 150, "companyName": "Apple Inc." }
-
-// GET /portfolio Response
-{
-  "success": true,
-  "data": {
-    "holdings": [{
-      "_id": "...", "symbol": "AAPL", "quantity": 10, "buyPrice": 150,
-      "currentPrice": 189.30, "investedValue": 1500, "currentValue": 1893,
-      "pnl": 393, "pnlPercent": 26.20, "dayChange": 0.69
-    }],
-    "summary": {
-      "totalInvested": 1500, "totalCurrent": 1893,
-      "totalPnl": 393, "totalPnlPercent": 26.20, "holdingsCount": 1
-    }
-  }
-}
-```
-
----
 
 ### 💓 Health
 
 ```bash
 GET /health
-# { "status": "OK", "timestamp": "2024-01-15T10:30:00.000Z" }
+# { "status": "OK" }
 ```
 
 ---
 
 ## 🗄 Database Design
 
-### Collections & Indexes
+**`users`** — `name`, `email` (unique, lowercase), `password` (bcrypt, `select: false`)
 
-**`users`**
-```
-name (String, min 2), email (String, unique, lowercase),
-password (String, bcrypt, select:false)
-→ Index: email (unique)
-```
+**`refreshTokens`** — `tokenHash` (unique, SHA-256), `userId` (indexed), `expiresAt` (TTL-indexed — MongoDB auto-deletes expired sessions)
 
-**`watchlists`**
-```
-userId (ObjectId → users, indexed), symbol (String, uppercase),
-companyName (String, default '')
-→ Index: { userId: 1, symbol: 1 } UNIQUE
-```
+**`watchlists`** — `userId` + `symbol`, compound unique index `{ userId, symbol }`
 
-**`alerts`**
-```
-userId (ObjectId → users, indexed), symbol (String, uppercase)
-condition (enum: GREATER_THAN | LESS_THAN), targetPrice (Number > 0)
-isTriggered (Boolean, default: false) → INDEXED (cron queries this)
-triggeredAt (Date, default: null), triggeredPrice (Number, default: null)
-```
+**`alerts`** — `userId`, `symbol`, `condition` (`GREATER_THAN`/`LESS_THAN`), `targetPrice`, `isTriggered` (indexed — the cron job queries on it), `triggeredAt`, `triggeredPrice`
 
-**`holdings`**
-```
-userId (ObjectId → users, indexed), symbol (String, uppercase),
-quantity (Number, min: 1), buyPrice (Number, min: 0.01)
-(P&L is never stored — always calculated live)
-```
+**`holdings`** — `userId`, `symbol`, `quantity`, `buyPrice` (P&L is never stored — always computed live from the current quote)
 
 ---
 
 ## ⏰ Background Jobs
 
-**File:** `src/jobs/alertChecker.js`
-**Schedule:** `*/5 * * * *` (every 5 minutes)
+**File:** `src/jobs/alertChecker.js` · **Schedule:** `*/5 * * * *`
 
 ```
 Every 5 min:
   1. Query: Alert.find({ isTriggered: false })
-  2. Deduplicate symbols
-  3. For each symbol:
-     a. Check Redis cache → HIT: use cached price
-     b. MISS: call Finnhub → cache result 60s
-  4. For each alert check condition:
-     GREATER_THAN: currentPrice > targetPrice → TRIGGER
-     LESS_THAN:    currentPrice < targetPrice → TRIGGER
-  5. Bulk update MongoDB: isTriggered, triggeredAt, triggeredPrice
-  6. Socket.IO emit to user's private room:
-     io.to(`user:${userId}`).emit('alert:triggered', { ... })
+  2. Deduplicate symbols, fetch each quote once (Redis-cached)
+  3. GREATER_THAN: currentPrice > targetPrice → trigger
+     LESS_THAN:    currentPrice < targetPrice → trigger
+  4. Update isTriggered / triggeredAt / triggeredPrice
+  5. Socket.IO emit alert:triggered to the owner's room
 ```
+
+---
+
+## ⚠️ Data Sources & Known Limitations
+
+This project intentionally uses **free, unofficial, keyless** data sources rather than a paid market-data API — the right tradeoff for a personal/portfolio project, but worth being upfront about:
+
+- **Yahoo Finance** (`query1/2.finance.yahoo.com`) — not an official public API, no documented rate limit or SLA. It can start blocking or throttling under sustained load; the 1-second poll interval is chosen for a snappy feel, not because it's guaranteed safe long-term.
+- **Google News RSS** — its feed license text is scoped to "personal, non-commercial feed reader" use. Fine for this project's scope; would need a real news API before any commercial use.
+- **Clearbit logo API / Google favicon service** — also unofficial. A handful of large NSE stocks (e.g. `SBIN`, `TCS`, `HCLTECH`) have no resolvable logo through either source and fall back to a generated initials avatar — this is expected, not a bug.
+- **Access-token blacklist is in-memory** — a token revoked at logout becomes valid again after a server restart, until it naturally expires (≤15 min later). Move to Redis-backed revocation if that gap matters for your use case.
+- **Alerts fire once** — once triggered, an alert stays triggered; users delete and recreate it for a new target.
 
 ---
 
@@ -740,14 +528,9 @@ Every 5 min:
 | Build Command | `npm run build` |
 
 ```env
-# Vercel Environment Variables
-NEXT_PUBLIC_API_URL=https://stock-tracker-backend-twb1.onrender.com/api
-NEXT_PUBLIC_SOCKET_URL=https://stock-tracker-backend-twb1.onrender.com
+NEXT_PUBLIC_API_URL=https://<your-backend>.onrender.com/api
+NEXT_PUBLIC_SOCKET_URL=https://<your-backend>.onrender.com
 ```
-
-**Live:** https://stock-tracker-lime-theta.vercel.app/
-
----
 
 ### Backend → Render
 
@@ -756,96 +539,43 @@ NEXT_PUBLIC_SOCKET_URL=https://stock-tracker-backend-twb1.onrender.com
 | Root Directory | `stock-tracker/backend` |
 | Build Command | `npm install` |
 | Start Command | `npm start` |
-| Instance | Free |
 
 ```env
-# Render Environment Variables
 NODE_ENV=production
 PORT=5000
 MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/stocktracker
 JWT_SECRET=<64-char-hex>
-JWT_EXPIRES_IN=7d
-FINNHUB_API_KEY=<your-key>
-REDIS_URL=redis://red-d81h7iv7f7vs73dken20:6379
-CLIENT_URL=https://stock-tracker-lime-theta.vercel.app
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY_DAYS=30
+REDIS_URL=<your-redis-url>
+CLIENT_URL=https://<your-frontend>.vercel.app
 ```
 
-**Live:** https://stock-tracker-backend-twb1.onrender.com
-
----
+> In production, the refresh cookie is set with `secure: true; sameSite: none` (required for a cross-origin cookie to be sent at all) — `CLIENT_URL` must exactly match the deployed frontend origin, and both frontend/backend must be served over HTTPS.
 
 ### Redis → Upstash (Free)
 
-1. https://upstash.com → Create Redis DB → copy `REDIS_URL`
-2. Format: `rediss://default:<password>@<region>.upstash.io:6379`
-3. Add as `REDIS_URL` in Render env vars
+`https://upstash.com` → create a Redis DB → copy the `rediss://` connection string into `REDIS_URL`.
 
 ---
 
-## 📮 Postman Collection
+## 📮 API Docs & Postman
 
-**File:** `StockPulse.postman_collection.json` at the repo root.
-
-### Import Steps
-
-1. Open Postman → **Import** → drag `collection.json`
-2. Go to collection → **Variables** tab → set:
-   - `base_url` → `https://stock-tracker-backend-twb1.onrender.com/api`  _(or `http://localhost:5000/api` locally)_
-3. Run **Auth › Signup** or **Auth › Login** first
-4. The collection auto-saves the token via post-response test:
-   ```js
-   pm.collectionVariables.set("token", pm.response.json().token);
-   ```
-5. All subsequent requests use `{{token}}` automatically
-
-### Collection Structure
-
-```
-📁 Stocklytics API
-├── 📁 Auth
-│   ├── POST  Signup
-│   ├── POST  Login
-│   └── GET   Me  (protected)
-│
-├── 📁 Stocks
-│   ├── GET   Recommended Stocks
-│   ├── GET   Search Stocks ?q=AAPL
-│   ├── GET   Get Quote /AAPL
-│   └── GET   Validate Symbol /AAPL
-│
-├── 📁 Watchlist
-│   ├── GET   Get Watchlist
-│   ├── POST  Add to Watchlist
-│   └── DEL   Remove from Watchlist
-│
-├── 📁 Alerts
-│   ├── GET   Get All Alerts
-│   ├── POST  Create Alert — Greater Than
-│   ├── POST  Create Alert — Less Than
-│   └── DEL   Delete Alert
-│
-├── 📁 Portfolio
-│   ├── GET   Get Portfolio with Live P&L
-│   ├── POST  Add Holding
-│   └── DEL   Remove Holding
-│
-└── GET  Health Check
-```
+- **Swagger** (`/api/docs`, non-production only) is generated directly from JSDoc comments on every route and is guaranteed to match the running code — the primary reference.
+- A Postman collection (`Stock tracker API.postman_collection.json`) also exists at the repo root from an earlier version of the API; it predates several endpoints added since (`/auth/refresh`, `/auth/logout`, `/stocks/indices`, `/stocks/chart/:symbol`, `/stocks/watchlist`, `/stocks/logo/:symbol`, `/news/*`) and hasn't been regenerated — prefer Swagger if the two disagree.
 
 ---
 
-## 📊 Evaluation Criteria
+## 🎯 What This Project Demonstrates
 
-| Area | Weight | What was built |
-|------|--------|----------------|
-| Clean Code & Maintainability | 15% | Custom hooks, `cn()` utility, centralised `lib/icons.ts`, layered backend (routes → controllers → services), no duplicate logic |
-| Backend Architecture | 20% | Config / Middleware / Models / Routes / Controllers / Services / Jobs — each with single responsibility |
-| Next.js Frontend | 20% | App Router, TypeScript, reusable UI primitives, custom hooks, per-page metadata, full ARIA accessibility |
-| Problem Solving Ability | 15% | Socket.IO real-time alerts, Redis cache-aside, zero-price filtering, debounced symbol validation, smart price suggestions |
-| Async / Background Jobs | 10% | node-cron every 5 min, Promise.allSettled for parallel prices, Redis cache in cron loop, Socket.IO emit on trigger |
-| Database Design | 10% | Compound unique index on watchlist, `isTriggered` index for cron, all timestamps, clean schema separation |
-| Documentation | 5% | This README + Postman collection + `.env.example` files |
-| Extra Features | Bonus | Socket.IO, Redis, recommended stocks API, symbol validation endpoint, price suggestions, ARIA tags |
+| Area | What was built |
+|------|-----------------|
+| Real-time systems | Socket.IO per-symbol rooms, 1s live price streaming, live-updating candlestick charts without re-scaling artifacts |
+| Auth & security | Access/refresh token rotation, httpOnly cookies, in-memory blacklist revocation, rate limiting, input validation, no client-side secret storage |
+| Backend architecture | Layered routes → controllers → services → models, centralized error handling, structured logging, auto-generated API docs |
+| Frontend architecture | Server/client component split for real per-page SEO metadata, custom hooks, shared animation primitives, full ARIA pass |
+| Working with unofficial/imperfect data | Graceful fallbacks everywhere a third-party source can fail — generated logo avatars, cache-and-degrade Redis usage, defensive symbol/time normalization |
+| Product thinking | India-specific UX (₹ formatting, IST timestamps, NSE/BSE symbol handling) rather than a generic global-market clone |
 
 ---
 
@@ -853,20 +583,16 @@ CLIENT_URL=https://stock-tracker-lime-theta.vercel.app
 
 | Decision | Reasoning |
 |----------|-----------|
-| **Finnhub free tier (US stocks)** | Reliable data for NYSE/NASDAQ. Indian NSE symbols return `c: 0` on free tier — detected and filtered. |
-| **JWT in localStorage** | Simple for assignment scope. Production would use httpOnly cookies + refresh tokens. |
-| **Redis TTL = 60 seconds** | Balances freshness vs Finnhub 60 req/min rate limit. Socket.IO subscriptions get ~30s pushes regardless. |
-| **Alerts fire once** | Once triggered, alert stays triggered. Users delete and recreate for a new target. |
-| **P&L never stored** | Always calculated fresh using Redis-cached prices. No stale data issue. |
-| **Cron + Socket.IO combo** | Server-side cron is reliable. Socket.IO delivers the result to the browser in real time when it fires. |
-| **Render cold starts** | Free tier spins down after 15 min. UptimeRobot (free) can ping `/health` every 10 min to prevent this. |
+| **Yahoo Finance over a paid data API** | No key, no cost, good enough coverage for NSE/BSE large-caps. Tradeoff: no SLA, could break or get rate-limited without notice. |
+| **Access/refresh tokens instead of a single JWT in localStorage** | Meaningfully reduces XSS blast radius. Tradeoff: more moving parts (rotation, blacklist, cookie config) than a single token. |
+| **In-memory access-token blacklist** | Simple, zero extra infra. Tradeoff: revocation doesn't survive a server restart — acceptable given the 15-minute access token lifetime. |
+| **Redis TTL = 1 second on quotes** | Matches the 1-second Socket.IO poll interval so caching still dedupes concurrent requests without visibly staling the price. |
+| **Alerts fire once** | Simpler mental model than re-arming; users just create a new alert. |
+| **P&L never stored** | Always calculated fresh from the live quote — no stale-data reconciliation needed. |
+| **Render cold starts** | Free tier spins down after 15 min. A free uptime pinger against `/health` would prevent this if needed. |
 
 ---
 
 ## 👤 Author
 
 **Chanchal Chourasiya** — [@Chanchalx00](https://github.com/Chanchalx00)
-
----
-
-*Built as part of the Stock Market Alert & Portfolio Tracker Machine Test Assignment*

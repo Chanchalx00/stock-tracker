@@ -1,61 +1,240 @@
-const jwt = require('jsonwebtoken');
+const validator = require('validator');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+const { ApiError } = require('../utils/ApiError');
+const { ApiResponse } = require('../utils/ApiResponse');
+const { asyncHandler } = require('../utils/asyncHandler');
+const {
+  issueTokens,
+  rotateRefreshToken,
+  revokeRefreshToken,
+  revokeAllRefreshTokensForUser,
+  issuePasswordResetToken,
+  consumePasswordResetToken,
+  blacklistAccessToken,
+  getRefreshTokenExpiryMs,
+} = require('../services/token.service');
+const { sendPasswordResetEmail } = require('../services/email.service');
+const logger = require('../utils/logger');
 
-const signToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-const sendTokenResponse = (user, statusCode, res) => {
-  const token = signToken(user._id);
-  res.status(statusCode).json({
-    success: true,
-    token,
-    user: { id: user._id, name: user.name, email: user.email },
-  });
+const MIN_PASSWORD_LENGTH = 8;
+const isProduction = process.env.NODE_ENV === 'production';
+
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? 'none' : 'lax',
+  maxAge: getRefreshTokenExpiryMs(),
+  path: '/api/auth',
+};
+
+const publicUser = (user) => ({ id: user._id, name: user.name, email: user.email, avatar: user.avatar || null });
+
+const sendAuthResponse = async (user, statusCode, res, message) => {
+  const { accessToken, refreshToken } = await issueTokens(user);
+  res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+  res
+    .status(statusCode)
+    .json(new ApiResponse(statusCode, message, null, { token: accessToken, user: publicUser(user) }));
 };
 
 // POST /api/auth/signup
-exports.signup = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
+exports.signup = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
 
-    if (!name || !email || !password)
-      return res.status(400).json({ success: false, message: 'All fields are required.' });
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(409).json({ success: false, message: 'Email already in use.' });
-
-    const user = await User.create({ name, email, password });
-    sendTokenResponse(user, 201, res);
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  if (!name || !email || !password) {
+    throw new ApiError(400, 'All fields are required.');
   }
-};
+
+  if (typeof name !== 'string' || name.trim().length < 2) {
+    throw new ApiError(400, 'Name must be at least 2 characters.', [
+      { field: 'name', message: 'Name must be at least 2 characters.' },
+    ]);
+  }
+
+  if (!validator.isEmail(email)) {
+    throw new ApiError(400, 'Please provide a valid email address.', [
+      { field: 'email', message: 'Please provide a valid email address.' },
+    ]);
+  }
+
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+    throw new ApiError(400, `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, [
+      { field: 'password', message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` },
+    ]);
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const existingUser = await User.findOne({ email: normalizedEmail });
+  if (existingUser) {
+    throw new ApiError(409, 'Email already in use.');
+  }
+
+  const user = await User.create({ name: name.trim(), email: normalizedEmail, password });
+  await sendAuthResponse(user, 201, res, 'Account created successfully.');
+});
 
 // POST /api/auth/login
-exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
+exports.login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
 
-    if (!email || !password)
-      return res.status(400).json({ success: false, message: 'Email and password required.' });
-
-    const user = await User.findOne({ email }).select('+password');
-    if (!user || !(await user.comparePassword(password)))
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
-
-    sendTokenResponse(user, 200, res);
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  if (!email || !password) {
+    throw new ApiError(400, 'Email and password required.');
   }
-};
+
+  const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
+  if (!user || !(await user.comparePassword(password))) {
+    throw new ApiError(401, 'Invalid credentials.');
+  }
+
+  await sendAuthResponse(user, 200, res, 'Login successful.');
+});
+
+// POST /api/auth/google
+exports.googleLogin = asyncHandler(async (req, res) => {
+  const { credential } = req.body;
+
+  if (!credential) {
+    throw new ApiError(400, 'Google credential is required.');
+  }
+
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    throw new ApiError(500, 'Google sign-in is not configured.');
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch {
+    throw new ApiError(401, 'Invalid Google credential.');
+  }
+
+  if (!payload?.email) {
+    throw new ApiError(401, 'Google account has no email.');
+  }
+
+  if (!payload.email_verified) {
+    throw new ApiError(401, 'Google email is not verified.');
+  }
+
+  const normalizedEmail = payload.email.trim().toLowerCase();
+
+  let user = await User.findOne({ googleId: payload.sub });
+
+  if (!user) {
+    user = await User.findOne({ email: normalizedEmail });
+    if (user) {
+      user.googleId = payload.sub;
+      if (!user.avatar && payload.picture) user.avatar = payload.picture;
+      await user.save();
+    } else {
+      user = await User.create({
+        name: payload.name || normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        googleId: payload.sub,
+        avatar: payload.picture,
+      });
+    }
+  }
+
+  await sendAuthResponse(user, 200, res, 'Login successful.');
+});
+
+// POST /api/auth/refresh
+exports.refresh = asyncHandler(async (req, res) => {
+  const token = req.cookies?.refreshToken;
+  if (!token) {
+    throw new ApiError(401, 'Refresh token missing.');
+  }
+
+  const { accessToken, refreshToken, user } = await rotateRefreshToken(token);
+  res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+  res
+    .status(200)
+    .json(new ApiResponse(200, 'Token refreshed.', null, { token: accessToken, user: publicUser(user) }));
+});
+
+// POST /api/auth/logout
+exports.logout = asyncHandler(async (req, res) => {
+  const refreshToken = req.cookies?.refreshToken;
+  if (refreshToken) {
+    await revokeRefreshToken(refreshToken);
+  }
+
+  const accessToken = req.headers.authorization?.replace(/^Bearer\s+/i, '').trim();
+  if (accessToken) {
+    blacklistAccessToken(accessToken);
+  }
+
+  res.clearCookie('refreshToken', { ...refreshCookieOptions, maxAge: undefined });
+  res.status(200).json(new ApiResponse(200, 'Logged out successfully.'));
+});
+
+// POST /api/auth/forgot-password
+// Always responds with the same generic message whether or not the email
+// has an account — the response itself must never reveal that.
+exports.forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email || !validator.isEmail(email)) {
+    throw new ApiError(400, 'Please provide a valid email address.');
+  }
+
+  const GENERIC_MESSAGE = 'If an account exists for that email, a reset link has been sent.';
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (user) {
+    const token = await issuePasswordResetToken(user);
+    const primaryOrigin = (process.env.CLIENT_URL || '').split(',')[0].trim();
+    const resetUrl = `${primaryOrigin}/reset-password?token=${token}`;
+
+    try {
+      await sendPasswordResetEmail(user.email, resetUrl);
+    } catch (err) {
+      // Delivery failure shouldn't surface to the client — same generic
+      // response either way — but it must not fail silently server-side.
+      logger.error(`Failed to send password reset email to ${user.email}: ${err.message}`, { tag: 'EMAIL' });
+    }
+  }
+
+  res.status(200).json(new ApiResponse(200, GENERIC_MESSAGE));
+});
+
+// POST /api/auth/reset-password
+exports.resetPassword = asyncHandler(async (req, res) => {
+  const { token, password } = req.body;
+
+  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
+    throw new ApiError(400, `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, [
+      { field: 'password', message: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` },
+    ]);
+  }
+
+  const userId = await consumePasswordResetToken(token);
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new ApiError(400, 'Invalid or expired reset link.');
+  }
+
+  user.password = password;
+  await user.save();
+
+  // A password reset means every other session should be signed out —
+  // this device gets a fresh one below via sendAuthResponse.
+  await revokeAllRefreshTokensForUser(user._id);
+
+  await sendAuthResponse(user, 200, res, 'Password reset successful.');
+});
 
 // GET /api/auth/me
-exports.getMe = async (req, res) => {
-  res.status(200).json({
-    success: true,
-    user: { id: req.user._id, name: req.user.name, email: req.user.email },
-  });
-};
+exports.getMe = asyncHandler(async (req, res) => {
+  res.status(200).json(new ApiResponse(200, 'Current user fetched.', null, { user: publicUser(req.user) }));
+});

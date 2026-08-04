@@ -1,8 +1,13 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn, formatPrice, formatPct, formatVolume } from "@/lib/utils";
 import { ChangeBadge } from "@/components/ui/Badge";
+import { Spinner } from "@/components/ui/Spinner";
 import Button from "@/components/ui/Button";
+import NewsList, { NewsItem } from "@/components/NewsList";
+import StockAvatar from "@/components/StockAvatar";
+import PriceChart, { OhlcPoint } from "@/components/PriceChart";
 import {
   IconClose,
   IconArrowUp,
@@ -16,8 +21,11 @@ import {
   IconActivity,
   IconTarget,
   IconPercent,
+  IconNews,
+  IconLineChart,
 } from "@/lib/icons";
 import type { LucideIcon } from "lucide-react";
+import api from "@/lib/api";
 
 interface StockDetail {
   symbol: string;
@@ -46,6 +54,7 @@ interface StatRowItem {
   colored: boolean;
 }
 
+
 export default function StockDetailModal({
   stock,
   onClose,
@@ -55,6 +64,62 @@ export default function StockDetailModal({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const isPositive = (stock?.percentChange ?? 0) >= 0;
+
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+
+  const [chartPoints, setChartPoints] = useState<OhlcPoint[]>([]);
+  const [chartLoading, setChartLoading] = useState(false);
+
+  useEffect(() => {
+    if (!stock) return;
+
+    let cancelled = false;
+    setNewsLoading(true);
+    setNews([]);
+
+    api
+      .get(`/news/stock/${encodeURIComponent(stock.symbol)}`, {
+        params: { name: stock.name || stock.symbol },
+      })
+      .then(({ data }) => {
+        if (!cancelled) setNews(data.data || []);
+      })
+      .catch(() => {
+        if (!cancelled) setNews([]);
+      })
+      .finally(() => {
+        if (!cancelled) setNewsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stock?.symbol, stock?.name]);
+
+  useEffect(() => {
+    if (!stock) return;
+
+    let cancelled = false;
+    setChartLoading(true);
+    setChartPoints([]);
+
+    api
+      .get(`/stocks/chart/${encodeURIComponent(stock.symbol)}`)
+      .then(({ data }) => {
+        if (!cancelled) setChartPoints(data.data?.points || []);
+      })
+      .catch(() => {
+        if (!cancelled) setChartPoints([]);
+      })
+      .finally(() => {
+        if (!cancelled) setChartLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stock?.symbol]);
 
   useEffect(() => {
     if (!stock) return;
@@ -126,7 +191,7 @@ export default function StockDetailModal({
       colored: false,
     },
     {
-      label: "Change ($)",
+      label: "Change (₹)",
       value:
         stock.change >= 0
           ? `+${formatPrice(stock.change)}`
@@ -157,30 +222,39 @@ export default function StockDetailModal({
       : 50;
 
   return (
-    <div
+    <motion.div
       role="presentation"
       onClick={onClose}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15 }}
       className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/75 backdrop-blur-sm"
     >
-      <div
+      <motion.div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={`${stock.symbol} stock details`}
         aria-describedby="modal-company"
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden"
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl"
       >
         <header className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-gray-800">
-          <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">
-              {stock.symbol}
-            </h2>
-            {stock.name && (
-              <p id="modal-company" className="text-sm text-gray-400 mt-0.5">
-                {stock.name}
-              </p>
-            )}
+          <div className="flex items-start gap-3 min-w-0">
+            <StockAvatar symbol={stock.symbol} size={44} className="mt-0.5" />
+            <div className="min-w-0">
+              <h2 className="text-2xl font-bold text-white tracking-tight">
+                {stock.symbol}
+              </h2>
+              {stock.name && (
+                <p id="modal-company" className="text-sm text-gray-400 mt-0.5">
+                  {stock.name}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="text-right pr-8">
@@ -209,46 +283,73 @@ export default function StockDetailModal({
           </button>
         </header>
 
-        <section aria-labelledby="stats-title" className="px-6 py-4">
-          <h3 id="stats-title" className="sr-only">
-            Market statistics
-          </h3>
-          <dl className="grid grid-cols-2 gap-2.5">
-            {stats.map(({ label, value, Icon, colored }) => (
-              <div
-                key={label}
-                className="bg-gray-800/60 rounded-xl px-3.5 py-3"
-              >
-                <dt className="flex items-center gap-1.5 text-xs text-gray-500 mb-1.5 font-medium">
-                  <Icon
-                    size={11}
-                    aria-hidden="true"
-                    className={
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 px-6 py-4">
+          <section aria-labelledby="stats-title">
+            <h3 id="stats-title" className="sr-only">
+              Market statistics
+            </h3>
+            <dl className="grid grid-cols-2 gap-2.5">
+              {stats.map(({ label, value, Icon, colored }) => (
+                <div key={label} className="bg-gray-800/60 rounded-xl px-3.5 py-3">
+                  <dt className="flex items-center gap-1.5 text-xs text-gray-500 mb-1.5 font-medium">
+                    <Icon
+                      size={11}
+                      aria-hidden="true"
+                      className={
+                        colored
+                          ? isPositive
+                            ? "text-emerald-400"
+                            : "text-red-400"
+                          : "text-gray-600"
+                      }
+                    />
+                    {label}
+                  </dt>
+                  <dd
+                    className={cn(
+                      "text-sm font-semibold",
                       colored
                         ? isPositive
                           ? "text-emerald-400"
                           : "text-red-400"
-                        : "text-gray-600"
-                    }
-                  />
-                  {label}
-                </dt>
-                <dd
-                  className={cn(
-                    "text-sm font-semibold",
-                    colored
-                      ? isPositive
-                        ? "text-emerald-400"
-                        : "text-red-400"
-                      : "text-white",
-                  )}
-                >
-                  {value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+                        : "text-white",
+                    )}
+                  >
+                    {value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section aria-labelledby="chart-title">
+            <div className="flex items-center justify-between mb-2">
+              <h3
+                id="chart-title"
+                className="flex items-center gap-1.5 text-xs text-gray-500 font-medium"
+              >
+                <IconLineChart size={12} aria-hidden="true" />
+                Today&apos;s Movement
+              </h3>
+              {chartLoading && <Spinner size="xs" aria-label="Loading chart" />}
+            </div>
+            <div className="bg-gray-800/40 border border-gray-800 rounded-xl p-2 h-[190px] flex items-center justify-center">
+              {chartLoading ? (
+                <div className="w-full h-full animate-pulse bg-gray-800/60 rounded-lg" />
+              ) : chartPoints.length > 1 ? (
+                <PriceChart
+                  points={chartPoints}
+                  positive={isPositive}
+                  height={174}
+                />
+              ) : (
+                <p className="text-xs text-gray-600">
+                  Chart unavailable for {stock.symbol}.
+                </p>
+              )}
+            </div>
+          </section>
+        </div>
 
         {stock.high > stock.low && (
           <section aria-label="Day price range" className="px-6 pb-4">
@@ -293,6 +394,22 @@ export default function StockDetailModal({
           </section>
         )}
 
+        <section aria-labelledby="news-title" className="px-6 pb-4">
+          <h3
+            id="news-title"
+            className="flex items-center gap-1.5 text-xs text-gray-500 font-medium mb-2"
+          >
+            <IconNews size={12} aria-hidden="true" />
+            Latest News
+          </h3>
+          <NewsList
+            news={news}
+            loading={newsLoading}
+            emptyMessage={`No recent news found for ${stock.symbol}.`}
+            skeletonCount={2}
+          />
+        </section>
+
         {(onAddWatchlist || onCreateAlert) && (
           <footer className="px-6 pb-5 flex gap-3">
             {onAddWatchlist && (
@@ -325,7 +442,7 @@ export default function StockDetailModal({
             )}
           </footer>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
