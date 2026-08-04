@@ -25,6 +25,7 @@ export { ArrowDownRight as IconArrowDown } from "lucide-react";
 export { Minus as IconMinus } from "lucide-react";
 export { CandlestickChart as IconCandlestick } from "lucide-react";
 export { LineChart as IconLineChart } from "lucide-react";
+export { Newspaper as IconNews } from "lucide-react";
 
 export { Plus as IconPlus } from "lucide-react";
 export { Trash2 as IconTrash } from "lucide-react";
@@ -61,6 +62,7 @@ export { PiggyBank as IconPiggyBank } from "lucide-react";
 export { ArrowUpDown as IconSwap } from "lucide-react";
 export { PackagePlus as IconAddHolding } from "lucide-react";
 
+export { Cookie as IconCookie } from "lucide-react";
 export { Inbox as IconInbox } from "lucide-react";
 export { PackageOpen as IconEmpty } from "lucide-react";
 export { SearchX as IconSearchEmpty } from "lucide-react";

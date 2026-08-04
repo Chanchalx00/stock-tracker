@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 
 export interface WatchItem {
   _id:         string;
@@ -32,8 +33,8 @@ export function useWatchlist() {
         const { data } = await api.post('/watchlist', { symbol, companyName });
         setItems((prev) => [data.data, ...prev]);
         return true;
-      } catch (err: any) {
-        throw new Error(err.response?.data?.message ?? 'Failed to add to watchlist.');
+      } catch (err) {
+        throw new Error(getErrorMessage(err, 'Failed to add to watchlist.'));
       }
     },
     []

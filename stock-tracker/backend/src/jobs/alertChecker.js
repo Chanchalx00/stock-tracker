@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const Alert = require('../models/Alert');
 const { getQuote } = require('../services/stockService');
+const logger = require('../utils/logger');
 
 const checkAlerts = async () => {
   
@@ -18,6 +19,7 @@ const checkAlerts = async () => {
           const quote = await getQuote(symbol);
           quotes[symbol] = quote.currentPrice;
         } catch {
+          // One symbol failing to quote shouldn't block checking the rest.
         }
       })
     );
@@ -45,13 +47,13 @@ const checkAlerts = async () => {
 
     await Promise.all(updates);
   } catch (error) {
-    console.error('[AlertChecker] Error:', error.message);
+    logger.error(`AlertChecker error: ${error.message}`, { tag: 'ALERT_CHECKER', stack: error.stack });
   }
 };
 
 const startAlertChecker = () => {
   cron.schedule('*/5 * * * *', checkAlerts);
-  console.log('[AlertChecker] Started — runs every 5 minutes');
+  logger.info('Started — runs every 5 minutes', { tag: 'ALERT_CHECKER' });
 };
 
 module.exports = { startAlertChecker };

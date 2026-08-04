@@ -1,0 +1,11 @@
+{
+  "name": "stock-tracker-repo",
+  "private": true,
+  "description": "Root package — exists only to host the git pre-commit hook (Husky) that runs the backend and frontend's own lint/typecheck/test scripts. The actual apps live in stock-tracker/backend and stock-tracker/frontend, each with their own independent package.json.",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7"
+  }
+}

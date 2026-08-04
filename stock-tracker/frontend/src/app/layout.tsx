@@ -1,10 +1,22 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { siteConfig } from "@/app/config/site";
+import Footer from "@/components/Footer";
+import CookieConsent from "@/components/CookieConsent";
 
-const geist = Geist({ subsets: ["latin"], display: "swap" });
+const geistSans = Geist({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-geist-sans",
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-geist-mono",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -72,8 +84,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${geist.className} bg-gray-950 text-white antialiased`}>
+    <html lang="en" className={`dark ${geistSans.variable} ${geistMono.variable}`}>
+      <body
+        className="font-sans bg-gray-950 text-white antialiased min-h-screen flex flex-col"
+      >
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[999] focus:px-4 focus:py-2 focus:bg-emerald-500 focus:text-white focus:rounded-lg focus:font-semibold"
@@ -82,7 +96,11 @@ export default function RootLayout({
         </a>
 
         <AuthProvider>
-          <main id="main-content">{children}</main>
+          <main id="main-content" className="flex-1 flex flex-col">
+            {children}
+          </main>
+          <Footer />
+          <CookieConsent />
         </AuthProvider>
       </body>
     </html>

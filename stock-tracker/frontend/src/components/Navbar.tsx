@@ -10,6 +10,8 @@ import {
   IconWatchlist,
   IconAlerts,
   IconPortfolio,
+  IconNews,
+  IconCandlestick,
   IconTrendingUp,
   IconLogout,
   IconMenu,
@@ -26,9 +28,11 @@ interface NavLink {
 
 const NAV_LINKS: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", Icon: IconDashboard },
+  { href: "/charts", label: "Charts", Icon: IconCandlestick },
   { href: "/watchlist", label: "Watchlist", Icon: IconWatchlist },
   { href: "/alerts", label: "Alerts", Icon: IconAlerts },
   { href: "/portfolio", label: "Portfolio", Icon: IconPortfolio },
+  { href: "/news", label: "News", Icon: IconNews },
 ];
 
 export default function Navbar() {
@@ -51,6 +55,15 @@ export default function Navbar() {
     };
   }, [drawerOpen]);
 
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [drawerOpen]);
+
   return (
     <>
       <header role="banner">
@@ -61,7 +74,7 @@ export default function Navbar() {
           <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14 gap-4">
             <Link
               href="/dashboard"
-              aria-label="StockPulse home"
+              aria-label="Stocklytics home"
               className={cn(
                 "flex items-center gap-2 text-emerald-400 font-bold text-lg tracking-tight shrink-0",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-md",

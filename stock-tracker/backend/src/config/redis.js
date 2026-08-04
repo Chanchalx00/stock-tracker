@@ -1,4 +1,5 @@
 const Redis = require("ioredis");
+const logger = require("../utils/logger");
 
 const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
   lazyConnect: true,
@@ -8,9 +9,9 @@ const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379", {
   },
 });
 
-redis.on("connect", () => console.log("Redis connected"));
+redis.on("connect", () => logger.info("Redis connected", { tag: "SYSTEM" }));
 redis.on("error", (err) =>
-  console.warn("Redis error (non-fatal):", err.message),
+  logger.warn(`Redis error (non-fatal): ${err.message}`, { tag: "SYSTEM" }),
 );
 
 const get = async (key) => {
@@ -25,13 +26,17 @@ const get = async (key) => {
 const set = async (key, value, ttlSeconds = 60) => {
   try {
     await redis.setex(key, ttlSeconds, JSON.stringify(value));
-  } catch {}
+  } catch {
+    // Cache write failure is never fatal — the caller already has the value.
+  }
 };
 
 const del = async (key) => {
   try {
     await redis.del(key);
-  } catch {}
+  } catch {
+    // Best-effort invalidation — a stale cache entry expires on its own via TTL.
+  }
 };
 
 module.exports = { redis, get, set, del };

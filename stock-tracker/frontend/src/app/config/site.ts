@@ -1,6 +1,6 @@
 export const siteConfig = {
   name: "Stocklytics — Stock Market Tracker",
-  authorName: "chanchal chourasiya",
+  authorName: "Chanchal Chourasiya",
   url: "https://stock-tracker-lime-theta.vercel.app",
   ogImage: "/og.png",
   iconIco: "/favicon.ico",

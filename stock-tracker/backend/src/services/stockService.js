@@ -1,56 +1,73 @@
 const axios = require("axios");
 const { get, set } = require("../config/redis");
 
-const FINNHUB_BASE = "https://finnhub.io/api/v1";
-const QUOTE_TTL = 60;
+const YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart";
+const YAHOO_SEARCH_URL = "https://query2.finance.yahoo.com/v1/finance/search";
+const QUOTE_TTL = 1;
 const SEARCH_TTL = 300;
 
-const getApiKey = () => {
-  const key = process.env.FINNHUB_API_KEY;
-  if (!key) throw new Error("FINNHUB_API_KEY not set in environment variables");
-  return key;
+const YAHOO_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+};
+
+// Indian equities trade on NSE (.NS) or BSE (.BO). Default bare symbols to NSE.
+// Index symbols (e.g. ^NSEI, ^BSESN) are already fully qualified.
+const normalizeSymbol = (symbol) => {
+  const clean = symbol.toUpperCase().trim();
+  if (clean.startsWith("^")) return clean;
+  return /\.[A-Z]+$/.test(clean) ? clean : `${clean}.NS`;
 };
 
 const getQuote = async (symbol) => {
-  const cacheKey = `quote:${symbol.toUpperCase()}`;
+  const normalized = normalizeSymbol(symbol);
+  const cacheKey = `quote:${normalized}`;
 
   const cached = await get(cacheKey);
-  if (cached) {
-    console.log("CACHE HIT:", cacheKey);
-    return cached;
+  if (cached) return cached;
+
+  let data;
+  try {
+    ({ data } = await axios.get(`${YAHOO_CHART_URL}/${encodeURIComponent(normalized)}`, {
+      params: { interval: "1d", range: "1d" },
+      headers: YAHOO_HEADERS,
+      timeout: 8000,
+    }));
+  } catch (err) {
+    if (err.response?.status === 404) {
+      throw new Error(
+        `No price data available for symbol "${symbol}". The symbol may be invalid, delisted, or the market may be closed.`,
+        { cause: err },
+      );
+    }
+    throw err;
   }
-  console.log("CACHE MISS:", cacheKey);
 
-  const { data } = await axios.get(`${FINNHUB_BASE}/quote`, {
-    params: { symbol: symbol.toUpperCase(), token: getApiKey() },
-    timeout: 8000,
-  });
+  const result = data?.chart?.result?.[0];
+  const meta = result?.meta;
 
-  if (
-    !data ||
-    data.c === undefined ||
-    data.c === null ||
-    data.c === 0 ||
-    (data.h === 0 && data.l === 0 && data.o === 0)
-  ) {
+  if (!meta || meta.regularMarketPrice === undefined || meta.regularMarketPrice === null) {
     throw new Error(
       `No price data available for symbol "${symbol}". The symbol may be invalid, delisted, or the market may be closed.`,
     );
   }
 
-  const prevClose = data.pc || data.c;
-  const change = +(data.c - prevClose).toFixed(2);
-  const pctChange =
-    prevClose > 0 ? +((change / prevClose) * 100).toFixed(2) : 0;
+  const currentPrice = meta.regularMarketPrice;
+  const prevClose = meta.chartPreviousClose ?? meta.previousClose ?? currentPrice;
+  const change = +(currentPrice - prevClose).toFixed(2);
+  const pctChange = prevClose > 0 ? +((change / prevClose) * 100).toFixed(2) : 0;
+
+  const openSeries = result.indicators?.quote?.[0]?.open || [];
+  const open = openSeries.length ? openSeries[openSeries.length - 1] : meta.regularMarketOpen ?? null;
 
   const quote = {
-    symbol: symbol.toUpperCase(),
-    currentPrice: data.c,
-    high: data.h,
-    low: data.l,
-    open: data.o,
-    prevClose: data.pc,
-    volume: data.v || 0,
+    symbol: meta.symbol,
+    currentPrice,
+    high: meta.regularMarketDayHigh ?? null,
+    low: meta.regularMarketDayLow ?? null,
+    open,
+    prevClose,
+    volume: meta.regularMarketVolume || 0,
     change,
     percentChange: pctChange,
     timestamp: new Date(),
@@ -58,6 +75,81 @@ const getQuote = async (symbol) => {
 
   await set(cacheKey, quote, QUOTE_TTL);
   return quote;
+};
+
+const SERIES_TTL = 60;
+
+// Intraday price series for chart rendering (e.g. index sparklines).
+const getChartSeries = async (symbol, { range = "1d", interval = "5m" } = {}) => {
+  const normalized = normalizeSymbol(symbol);
+  const cacheKey = `series:${normalized}:${range}:${interval}`;
+
+  const cached = await get(cacheKey);
+  if (cached) return cached;
+
+  let data;
+  try {
+    ({ data } = await axios.get(`${YAHOO_CHART_URL}/${encodeURIComponent(normalized)}`, {
+      params: { interval, range },
+      headers: YAHOO_HEADERS,
+      timeout: 8000,
+    }));
+  } catch (err) {
+    if (err.response?.status === 404) {
+      throw new Error(`No chart data available for symbol "${symbol}".`, { cause: err });
+    }
+    throw err;
+  }
+
+  const result = data?.chart?.result?.[0];
+  const meta = result?.meta;
+
+  if (!meta || meta.regularMarketPrice === undefined || meta.regularMarketPrice === null) {
+    throw new Error(`No chart data available for symbol "${symbol}".`);
+  }
+
+  const timestamps = result.timestamp || [];
+  const quoteSeries = result.indicators?.quote?.[0] || {};
+  const {
+    open: opens = [],
+    high: highs = [],
+    low: lows = [],
+    close: closes = [],
+    volume: volumes = [],
+  } = quoteSeries;
+
+  const points = timestamps
+    .map((t, i) => ({
+      time: t * 1000,
+      open: opens[i],
+      high: highs[i],
+      low: lows[i],
+      close: closes[i],
+      volume: volumes[i] || 0,
+    }))
+    .filter((p) =>
+      [p.open, p.high, p.low, p.close].every((v) => v !== null && v !== undefined),
+    );
+
+  const currentPrice = meta.regularMarketPrice;
+  const prevClose = meta.chartPreviousClose ?? meta.previousClose ?? currentPrice;
+  const change = +(currentPrice - prevClose).toFixed(2);
+  const pctChange = prevClose > 0 ? +((change / prevClose) * 100).toFixed(2) : 0;
+
+  const series = {
+    symbol: meta.symbol,
+    name: meta.longName || meta.shortName || meta.symbol,
+    currentPrice,
+    high: meta.regularMarketDayHigh ?? null,
+    low: meta.regularMarketDayLow ?? null,
+    prevClose,
+    change,
+    percentChange: pctChange,
+    points,
+  };
+
+  await set(cacheKey, series, SERIES_TTL);
+  return series;
 };
 
 const getQuoteSafe = async (symbol) => {
@@ -74,14 +166,27 @@ const searchSymbol = async (query) => {
   const cached = await get(cacheKey);
   if (cached) return cached;
 
-  const { data } = await axios.get(`${FINNHUB_BASE}/search`, {
-    params: { q: query, token: getApiKey() },
+  const { data } = await axios.get(YAHOO_SEARCH_URL, {
+    params: { q: query, quotesCount: 20, newsCount: 0 },
+    headers: YAHOO_HEADERS,
     timeout: 8000,
   });
 
-  const results = data.result?.slice(0, 10) || [];
+  const results = (data.quotes || [])
+    .filter(
+      (q) =>
+        q.quoteType === "EQUITY" && (q.exchange === "NSI" || q.exchange === "BSE"),
+    )
+    .slice(0, 10)
+    .map((q) => ({
+      symbol: q.symbol,
+      displaySymbol: q.symbol,
+      description: q.longname || q.shortname || q.symbol,
+      type: "Common Stock",
+    }));
+
   await set(cacheKey, results, SEARCH_TTL);
   return results;
 };
 
-module.exports = { getQuote, getQuoteSafe, searchSymbol };
+module.exports = { getQuote, getQuoteSafe, searchSymbol, getChartSeries };
