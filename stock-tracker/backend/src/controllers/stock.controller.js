@@ -106,9 +106,38 @@ exports.getIndices = asyncHandler(async (req, res) => {
 // GET /api/stocks/chart/:symbol
 exports.getStockChart = asyncHandler(async (req, res) => {
   const { symbol } = req.params;
+  let { range = "1y", interval } = req.query;
+
   if (!symbol) throw new ApiError(400, "Symbol is required.");
 
-  const series = await getChartSeries(symbol, { range: "1d", interval: "5m" });
+  const VALID_RANGES = ["1d", "5d", "1m", "6m", "1y", "5y", "max"];
+  if (!VALID_RANGES.includes(range.toLowerCase())) {
+    range = "1y";
+  }
+
+  if (!interval) {
+    switch (range.toLowerCase()) {
+      case "1d":
+        interval = "5m";
+        break;
+      case "5d":
+        interval = "15m";
+        break;
+      case "1m":
+      case "6m":
+      case "1y":
+        interval = "1d";
+        break;
+      case "5y":
+      case "max":
+        interval = "1wk";
+        break;
+      default:
+        interval = "1d";
+    }
+  }
+
+  const series = await getChartSeries(symbol, { range, interval });
   res.status(200).json(new ApiResponse(200, "Chart series fetched.", series));
 });
 

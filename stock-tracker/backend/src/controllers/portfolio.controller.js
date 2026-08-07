@@ -30,7 +30,16 @@ exports.getPortfolio = asyncHandler(async (req, res) => {
           percentChange: quote.percentChange,
         };
       } catch {
-        return { ...h._doc, currentPrice: null, pnl: null };
+        const investedValue = (h.buyPrice || 0) * (h.quantity || 0);
+        return {
+          ...h._doc,
+          currentPrice: null,
+          currentValue: null,
+          investedValue: +investedValue.toFixed(2),
+          pnl: null,
+          pnlPercent: null,
+          percentChange: null,
+        };
       }
     })
   );
