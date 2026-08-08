@@ -26,6 +26,11 @@ export { Minus as IconMinus } from "lucide-react";
 export { CandlestickChart as IconCandlestick } from "lucide-react";
 export { LineChart as IconLineChart } from "lucide-react";
 export { Newspaper as IconNews } from "lucide-react";
+export { PieChart as IconPieChart } from "lucide-react";
+export { Lightbulb as IconLightbulb } from "lucide-react";
+export { Zap as IconZap } from "lucide-react";
+export { Flame as IconFlame } from "lucide-react";
+export { Sparkles as IconSparkles } from "lucide-react";
 
 export { Plus as IconPlus } from "lucide-react";
 export { Trash2 as IconTrash } from "lucide-react";

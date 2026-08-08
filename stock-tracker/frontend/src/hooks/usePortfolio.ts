@@ -9,12 +9,12 @@ export interface Holding {
   quantity:     number;
   buyPrice:     number;
   currentPrice: number | null;
-  investedValue: number;
+  investedValue?: number | null;
   currentValue:  number | null;
   pnl:           number | null;
   pnlPercent:    number | null;
-  dayChange:     number | null;
-  createdAt:     string;
+  dayChange?:    number | null;
+  createdAt?:    string;
 }
 
 export interface PortfolioSummary {

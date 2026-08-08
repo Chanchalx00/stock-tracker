@@ -58,25 +58,17 @@ interface SearchResult {
 
 export default function DashboardClient() {
   const router = useRouter();
-
   const { toast, success, error: toastError } = useToast();
-
   const [recommended, setRecommended] = useState<StockData[]>([]);
-
   const [recLoading, setRecLoading] = useState(true);
-
   const [query, setQuery] = useState("");
-
   const [results, setResults] = useState<SearchResult[]>([]);
-
-  const [resultQuotes, setResultQuotes] = useState<Record<string, StockData>>({});
-
+  const [resultQuotes, setResultQuotes] = useState<Record<string, StockData>>(
+    {},
+  );
   const [searching, setSearching] = useState(false);
-
   const [modalStock, setModalStock] = useState<StockData | null>(null);
-
   const [fetchingDetail, setFetchingDetail] = useState<string | null>(null);
-
   const [addingWatch, setAddingWatch] = useState<string | null>(null);
 
   const loadRecommended = async () => {
