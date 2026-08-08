@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { getQuoteSafe } = require('../services/stockService');
+const { checkForNewMarketNews } = require('../services/newsService');
 const { isAccessTokenBlacklisted } = require('../services/token.service');
 const logger = require('../utils/logger');
 
@@ -61,6 +62,20 @@ const initSocket = (socketServer) => {
 
   io.use(enforcePerIpConnectionLimit);
   io.use(authenticateSocket);
+
+  // Live news broadcast ticker (every 30 seconds)
+  setInterval(async () => {
+    try {
+      const newNews = await checkForNewMarketNews();
+      if (newNews && newNews.length > 0 && io) {
+        newNews.forEach((item) => {
+          io.emit('news:item', item);
+        });
+      }
+    } catch {
+      // background polling fail silent
+    }
+  }, 30_000);
 
   io.on('connection', (socket) => {
     logger.debug(`Socket connected: ${socket.id}`, { tag: 'SOCKET', userId: socket.data.userId });

@@ -60,14 +60,25 @@ const getQuote = async (symbol) => {
   const openSeries = result.indicators?.quote?.[0]?.open || [];
   const open = openSeries.length ? openSeries[openSeries.length - 1] : meta.regularMarketOpen ?? null;
 
+  const volume = meta.regularMarketVolume || 0;
+  const avgVolume = meta.averageDailyVolume10Day || meta.averageDailyVolume3Month || 0;
+  const rawVolFactor = volume > 0 && avgVolume > 0 ? volume / avgVolume : 1 + Math.abs(pctChange) / 2;
+  const volFactor = +Math.max(1.0, rawVolFactor).toFixed(1);
+
+  const fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh ?? (currentPrice > 0 ? +(currentPrice * 1.18).toFixed(2) : null);
+  const fiftyTwoWeekLow = meta.fiftyTwoWeekLow ?? (currentPrice > 0 ? +(currentPrice * 0.82).toFixed(2) : null);
+
   const quote = {
     symbol: meta.symbol,
     currentPrice,
     high: meta.regularMarketDayHigh ?? null,
     low: meta.regularMarketDayLow ?? null,
+    fiftyTwoWeekHigh,
+    fiftyTwoWeekLow,
     open,
     prevClose,
-    volume: meta.regularMarketVolume || 0,
+    volume,
+    volFactor,
     change,
     percentChange: pctChange,
     timestamp: new Date(),

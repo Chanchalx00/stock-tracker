@@ -1,11 +1,10 @@
 const cron = require('node-cron');
 const Alert = require('../models/Alert');
 const { getQuote } = require('../services/stockService');
+const { broadcastAlert } = require('../socket/socketManager');
 const logger = require('../utils/logger');
 
 const checkAlerts = async () => {
-  
-
   try {
     const activeAlerts = await Alert.find({ isTriggered: false });
     if (!activeAlerts.length) return;
@@ -24,36 +23,39 @@ const checkAlerts = async () => {
       })
     );
 
-    const updates = [];
     for (const alert of activeAlerts) {
       const price = quotes[alert.symbol];
       if (price === undefined) continue;
 
       const triggered =
-        (alert.condition === 'GREATER_THAN' && price > alert.targetPrice) ||
-        (alert.condition === 'LESS_THAN' && price < alert.targetPrice);
+        (alert.condition === 'GREATER_THAN' && price >= alert.targetPrice) ||
+        (alert.condition === 'LESS_THAN' && price <= alert.targetPrice);
 
       if (triggered) {
-        updates.push(
-          Alert.findByIdAndUpdate(alert._id, {
+        const updated = await Alert.findByIdAndUpdate(
+          alert._id,
+          {
             isTriggered: true,
             triggeredAt: new Date(),
             triggeredPrice: price,
-          })
+          },
+          { new: true }
         );
-      
+
+        if (updated) {
+          logger.info(`Alert triggered for user ${alert.userId}: ${alert.symbol} @ ₹${price}`, { tag: 'ALERT_CHECKER' });
+          broadcastAlert(alert.userId, updated);
+        }
       }
     }
-
-    await Promise.all(updates);
   } catch (error) {
     logger.error(`AlertChecker error: ${error.message}`, { tag: 'ALERT_CHECKER', stack: error.stack });
   }
 };
 
 const startAlertChecker = () => {
-  cron.schedule('*/5 * * * *', checkAlerts);
-  logger.info('Started — runs every 5 minutes', { tag: 'ALERT_CHECKER' });
+  cron.schedule('*/15 * * * * *', checkAlerts);
+  logger.info('Started — runs every 15 seconds', { tag: 'ALERT_CHECKER' });
 };
 
-module.exports = { startAlertChecker };
+module.exports = { startAlertChecker, checkAlerts };
