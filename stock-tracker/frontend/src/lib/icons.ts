@@ -1,10 +1,12 @@
 export { LayoutDashboard as IconDashboard } from "lucide-react";
 export { Bookmark as IconWatchlist } from "lucide-react";
+export { Bookmark as IconBookmark } from "lucide-react";
 export { Bell as IconAlerts } from "lucide-react";
 export { Briefcase as IconPortfolio } from "lucide-react";
 export { Search as IconSearch } from "lucide-react";
 export { Menu as IconMenu } from "lucide-react";
 export { X as IconClose } from "lucide-react";
+export { Moon as IconMoon } from "lucide-react";
 
 export { LogIn as IconLogin } from "lucide-react";
 export { LogOut as IconLogout } from "lucide-react";
@@ -31,6 +33,21 @@ export { Lightbulb as IconLightbulb } from "lucide-react";
 export { Zap as IconZap } from "lucide-react";
 export { Flame as IconFlame } from "lucide-react";
 export { Sparkles as IconSparkles } from "lucide-react";
+export { Brain as IconBrain } from "lucide-react";
+export { Award as IconAward } from "lucide-react";
+export { Maximize2 as IconMaximize } from "lucide-react";
+export { RotateCcw as IconRotate } from "lucide-react";
+export { Sliders as IconSliders } from "lucide-react";
+export { Layers as IconLayers } from "lucide-react";
+export { ArrowLeft as IconArrowLeft } from "lucide-react";
+export { Sun as IconSun } from "lucide-react";
+export { Wind as IconWind } from "lucide-react";
+export { Wrench as IconWrench } from "lucide-react";
+export { Building2 as IconBuilding } from "lucide-react";
+export { Globe as IconGlobe } from "lucide-react";
+export { Users as IconUsers } from "lucide-react";
+export { CheckCircle as IconCheckCircle } from "lucide-react";
+export { Battery as IconBattery } from "lucide-react";
 
 export { Plus as IconPlus } from "lucide-react";
 export { Trash2 as IconTrash } from "lucide-react";

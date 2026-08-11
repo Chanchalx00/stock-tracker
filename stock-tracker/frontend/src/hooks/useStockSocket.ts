@@ -15,9 +15,6 @@ interface LiveQuote {
 type QuoteHandler = (quote: LiveQuote) => void;
 
 export function useStockSocket(symbols: string[], onQuote: QuoteHandler) {
-  // Callers often pass a fresh array literal every render — comparing by
-  // this joined key instead of the array reference means subscribe/
-  // unsubscribe below only re-run when the actual set of symbols changes.
   const symbolsKey = useMemo(() => symbols.join(','), [symbols]);
 
   const subscribe = useCallback(() => {
@@ -31,7 +28,7 @@ export function useStockSocket(symbols: string[], onQuote: QuoteHandler) {
         onQuote(quote);
       });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed off symbolsKey, not the symbols/onQuote references
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbolsKey]);
 
   const unsubscribe = useCallback(() => {
@@ -41,7 +38,7 @@ export function useStockSocket(symbols: string[], onQuote: QuoteHandler) {
     symbols.forEach((symbol) => {
       socket.off(`price:${symbol}`);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally keyed off symbolsKey, not the symbols reference
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbolsKey]);
 
   useEffect(() => {

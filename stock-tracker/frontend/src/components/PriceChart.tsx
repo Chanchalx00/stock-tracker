@@ -27,11 +27,6 @@ interface PriceChartProps {
   positive: boolean;
   height?: number;
 }
-
-// lightweight-charts formats timestamps in UTC by default, not the
-// viewer's local time — for IST (UTC+5:30) that shows a time 5.5 hours
-// behind the real one. Force Asia/Kolkata explicitly so the axis and
-// crosshair always read as actual Indian market time.
 function formatIST(time: number): string {
   return new Date(time * 1000).toLocaleTimeString("en-IN", {
     timeZone: "Asia/Kolkata",
@@ -41,11 +36,6 @@ function formatIST(time: number): string {
     second: "2-digit",
   });
 }
-
-// lightweight-charts requires strictly ascending, unique times. Round to
-// whole seconds and keep the latest bar for any that collide, as a
-// defensive floor — the real dedup for live data happens upstream, where
-// ticks are bucketed to match the historical series' own interval.
 function toSeriesData(points: OhlcPoint[]) {
   const bySecond = new Map<number, number>();
   for (const p of points) {

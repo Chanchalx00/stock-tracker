@@ -11,10 +11,6 @@ export const getSocket = (): Socket => {
         autoConnect: true,
         reconnection: true,
         reconnectionDelay: 2000,
-        // Re-evaluated on every (re)connect attempt, not just the first —
-        // the access token lives in memory and rotates, so a reconnect
-        // after a refresh must pick up the current one, not the one that
-        // was live when the socket was first created.
         auth: (cb) => cb({ token: getAccessToken() }),
       }
     );

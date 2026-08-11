@@ -26,11 +26,6 @@ describe("CookieConsent", () => {
     await user.click(screen.getByRole("button", { name: "Accept all" }));
 
     expect(getCookieConsent()).toBe("accepted");
-    // framer-motion's exit transition means removal isn't synchronous with
-    // the click — but how long it takes varies by run (sometimes it's
-    // already gone by the time we check), so poll for "gone" rather than
-    // requiring the element to still exist at the moment we start waiting
-    // (which is what waitForElementToBeRemoved demands, and why it flaked).
     await waitFor(() => {
       expect(screen.queryByRole("dialog", { name: "Cookie notice" })).not.toBeInTheDocument();
     });

@@ -95,7 +95,6 @@ function AlertsContent() {
     }
   }, []);
 
-  // Socket listener for real-time alert trigger & Windows OS notification
   useEffect(() => {
     const socket = getSocket();
 
@@ -107,16 +106,14 @@ function AlertsContent() {
 
       success(`Alert Triggered: ${triggeredAlert.symbol}`);
 
-      // Windows Native OS Desktop Notification
       if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
         try {
-          new Notification(`🚨 Price Alert: ${triggeredAlert.symbol}`, {
+          new Notification(` Price Alert: ${triggeredAlert.symbol}`, {
             body: bodyMsg,
             icon: "/favicon.ico",
             tag: `alert-${triggeredAlert._id}`,
           });
         } catch {
-          // ignore OS notification error if blocked by OS settings
         }
       }
     };
@@ -139,7 +136,7 @@ function AlertsContent() {
       setNotifPermission(perm);
       if (perm === "granted") {
         success("Windows desktop notifications enabled!");
-        new Notification("Windows Notifications Active 🔔", {
+        new Notification("Windows Notifications Active", {
           body: "You will now receive native Windows OS desktop alerts when target prices are hit.",
           icon: "/favicon.ico",
         });

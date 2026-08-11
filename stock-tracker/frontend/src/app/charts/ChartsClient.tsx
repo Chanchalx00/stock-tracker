@@ -24,6 +24,8 @@ import {
   IconBarChart,
   IconActivity,
   IconLineChart,
+  IconRotate,
+  IconSliders,
 } from "@/lib/icons";
 import { formatPrice, displaySymbol } from "@/lib/utils";
 import { mergeLiveTick } from "@/lib/liveChart";
@@ -57,11 +59,11 @@ const RANGES = [
   { label: "MAX", value: "max" },
 ];
 
-const CHART_TYPES: { type: ChartType; label: string; icon: string }[] = [
-  { type: "candlestick", label: "Candles", icon: "🕯️" },
-  { type: "line", label: "Line", icon: "📈" },
-  { type: "area", label: "Area", icon: "🌊" },
-  { type: "bar", label: "Bar", icon: "📊" },
+const CHART_TYPES: { type: ChartType; label: string; icon: React.ReactNode }[] = [
+  { type: "candlestick", label: "Candles", icon: <IconCandlestick size={13} /> },
+  { type: "line", label: "Line", icon: <IconLineChart size={13} /> },
+  { type: "area", label: "Area", icon: <IconActivity size={13} /> },
+  { type: "bar", label: "Bar", icon: <IconBarChart size={13} /> },
 ];
 
 export default function ChartsClient() {
@@ -350,10 +352,11 @@ export default function ChartsClient() {
                     {/* Reset Zoom Button */}
                     <button
                       onClick={() => chartRef.current?.resetZoom()}
-                      className="px-2.5 py-1 rounded-lg bg-[#1e222d] border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors text-xs flex items-center gap-1 font-medium"
+                      className="px-2.5 py-1 rounded-lg bg-[#1e222d] border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors text-xs flex items-center gap-1.5 font-medium"
                       title="Reset Zoom / Fit Content"
                     >
-                      🎯 Reset Zoom
+                      <IconRotate size={13} />
+                      <span>Reset Zoom</span>
                     </button>
                   </div>
                 </div>

@@ -23,9 +23,6 @@ export default function ForgotPasswordClient() {
     setLoading(true);
     try {
       await forgotPassword(email);
-      // The backend always returns the same generic response whether or
-      // not the email has an account — showing anything else here would
-      // undo that and let this form be used to probe for registered emails.
       setSent(true);
     } catch (err) {
       setError(getErrorMessage(err, "Something went wrong. Please try again."));

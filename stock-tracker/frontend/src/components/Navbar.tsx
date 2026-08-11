@@ -17,6 +17,7 @@ import {
   IconMenu,
   IconClose,
   IconUser,
+  IconSparkles,
 } from "@/lib/icons";
 import type { LucideIcon } from "lucide-react";
 
@@ -29,6 +30,7 @@ interface NavLink {
 const NAV_LINKS: NavLink[] = [
   { href: "/dashboard", label: "Dashboard", Icon: IconDashboard },
   { href: "/charts", label: "Charts", Icon: IconCandlestick },
+  { href: "/ai-analysis", label: "AI Analysis", Icon: IconSparkles },
   { href: "/watchlist", label: "Watchlist", Icon: IconWatchlist },
   { href: "/alerts", label: "Alerts", Icon: IconAlerts },
   { href: "/portfolio", label: "Portfolio", Icon: IconPortfolio },

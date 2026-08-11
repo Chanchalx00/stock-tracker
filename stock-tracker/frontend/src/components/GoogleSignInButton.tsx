@@ -49,11 +49,6 @@ const GoogleGlyph = () => (
   </svg>
 );
 
-// Google's SDK only renders its button inside a cross-origin iframe, so it
-// can't be restyled directly. We render the real (functional) button
-// invisibly on top of a fully custom glass button underneath — clicks,
-// keyboard focus, and screen readers all still go through Google's own
-// element; only the paint is ours.
 export default function GoogleSignInButton({
   onCredential,
   onError,
@@ -102,7 +97,6 @@ export default function GoogleSignInButton({
       />
 
       <div ref={wrapperRef} className="group relative w-full">
-        {/* Visual glass button — decorative only, the real click target sits on top */}
         <div
           aria-hidden="true"
           className={`relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-medium text-white shadow-lg shadow-black/30 backdrop-blur-xl transition-all duration-200 group-hover:border-white/25 group-hover:bg-white/[0.1] group-focus-within:ring-2 group-focus-within:ring-emerald-500 ${
@@ -117,7 +111,6 @@ export default function GoogleSignInButton({
           </span>
         </div>
 
-        {/* Google's real button — invisible, exact overlay, receives the click */}
         <div
           ref={buttonRef}
           className={`absolute inset-0 overflow-hidden rounded-2xl opacity-0 ${

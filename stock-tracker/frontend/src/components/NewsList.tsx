@@ -118,7 +118,6 @@ export default function NewsList({
 
         return (
           <li key={item.id || item.link || item.title || i} className="relative pl-7">
-            {/* Timeline node dot */}
             <span
               className={`absolute left-2.5 top-6 -translate-x-1/2 w-3.5 h-3.5 rounded-full border-2 border-gray-950 transition-all ${
                 item.isNew
@@ -134,7 +133,6 @@ export default function NewsList({
                   : "bg-gray-900 border-gray-800 hover:border-gray-700"
               }`}
             >
-              {/* Header: Stock Avatar, Ticker, Category, Source, & Time */}
               <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
                 <div className="flex items-center gap-2.5">
                   <StockAvatar symbol={sym} size={32} />
@@ -173,7 +171,6 @@ export default function NewsList({
                 </div>
               </div>
 
-              {/* Main Headline */}
               <a
                 href={item.link}
                 target="_blank"
@@ -191,7 +188,6 @@ export default function NewsList({
                 </div>
               </a>
 
-              {/* "Market Impact" Context Box */}
               {item.whyItMatters && (
                 <div className="mb-4 bg-gray-950/80 border border-gray-800 rounded-xl p-3.5 text-xs text-gray-300 relative overflow-hidden">
                   <div className="absolute top-0 left-0 bottom-0 w-1 bg-amber-400" />
@@ -244,7 +240,6 @@ export default function NewsList({
                   )}
                 </div>
 
-                {/* 2. Volume Factor Indicator */}
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
                     <IconActivity size={14} />
@@ -264,17 +259,14 @@ export default function NewsList({
                   </div>
                 </div>
 
-                {/* 3. Unique 52-Week Range Custom Gauge */}
                 <div>
                   <div className="flex justify-between text-[10px] text-gray-400 font-mono font-medium mb-1">
                     <span>52W L: {low52 != null ? `₹${low52.toFixed(0)}` : "—"}</span>
                     <span className="text-gray-300 font-bold">52W Position</span>
                     <span>52W H: {high52 != null ? `₹${high52.toFixed(0)}` : "—"}</span>
                   </div>
-                  {/* Custom Gauge Track */}
                   <div className="relative h-2 w-full bg-gray-800 rounded-full overflow-hidden border border-gray-700/50">
                     <div className="absolute inset-0 bg-gradient-to-r from-red-500/60 via-amber-500/60 to-emerald-500/60" />
-                    {/* Glowing Position Pointer Circle */}
                     <div
                       className="absolute top-0 bottom-0 w-2.5 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.9)] -translate-x-1/2 border border-gray-900"
                       style={{ left: `${gaugePct}%` }}
@@ -284,7 +276,6 @@ export default function NewsList({
                 </div>
               </div>
 
-              {/* Bottom timestamp */}
               {relativeTime && (
                 <div className="mt-2.5 flex items-center justify-end text-[11px] text-gray-500">
                   <span className="flex items-center gap-1">

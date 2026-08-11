@@ -18,8 +18,6 @@ export default function StockAvatar({
   const [failed, setFailed] = useState(false);
   const isIndex = symbol.startsWith("^");
 
-  // Indices (^NSEI, ^BSESN) aren't companies — there's no logo to fetch,
-  // so skip the request entirely and show a distinct chart icon instead.
   if (isIndex) {
     return (
       <div
@@ -36,10 +34,6 @@ export default function StockAvatar({
     );
   }
 
-  // The backend always resolves to *something* — a real company logo, or
-  // a generated initials avatar sized to fit — so this <img> only fails
-  // to load if the network/backend itself is unreachable, which this
-  // plain gray circle covers as a last resort.
   if (failed) {
     return (
       <div

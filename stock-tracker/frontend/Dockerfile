@@ -10,9 +10,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# NEXT_PUBLIC_* vars are inlined into the client bundle at build time, so
-# they must be supplied as build args (docker compose build --build-arg /
-# the `args:` block in docker-compose.yml), not just as runtime env vars.
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_SOCKET_URL
 ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID

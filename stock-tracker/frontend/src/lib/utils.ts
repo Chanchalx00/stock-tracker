@@ -6,10 +6,6 @@ export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
-// Pulls the backend's ApiError message out of an axios rejection, falling
-// back to a generic message for network errors / anything unexpected —
-// avoids every call site typing its catch block `(err: any)` just to
-// reach `err.response?.data?.message`.
 export function getErrorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
     const data = err.response?.data as { message?: string } | undefined;
@@ -54,8 +50,6 @@ const INDEX_LABELS: Record<string, string> = {
   BSESN: "SENSEX",
 };
 
-// Yahoo's raw symbols aren't display-ready: indices are prefixed with "^"
-// (e.g. "^NSEI") and equities are suffixed with their exchange ("TCS.NS").
 export function displaySymbol(symbol: string): string {
   const bare = symbol.replace(/^\^/, "").replace(/\.(NS|BO)$/i, "");
   return INDEX_LABELS[bare] ?? bare;

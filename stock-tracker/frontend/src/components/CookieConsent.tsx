@@ -10,12 +10,6 @@ const STORAGE_KEY = "cookie-consent";
 
 export type CookieConsentValue = "accepted" | "necessary";
 
-// The only cookie this app sets today is the httpOnly refreshToken used
-// to keep a session alive (see backend/src/controllers/auth.controller.js)
-// — strictly necessary, so it's set regardless of the choice made here.
-// This banner exists so that if analytics/ads are added later, whatever
-// wires them up can gate on getCookieConsent() === "accepted" instead of
-// loading unconditionally.
 export const getCookieConsent = (): CookieConsentValue | null => {
   if (typeof window === "undefined") return null;
   const value = window.localStorage.getItem(STORAGE_KEY);
@@ -24,11 +18,6 @@ export const getCookieConsent = (): CookieConsentValue | null => {
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
-
-  // Deliberately not a lazy useState initializer: this component is
-  // server-rendered first, before localStorage exists, so starting from
-  // `false` and only revealing after this effect runs client-side avoids
-  // flashing the banner at returning visitors who already made a choice.
   useEffect(() => {
     setVisible(getCookieConsent() === null);
   }, []);

@@ -62,7 +62,6 @@ export default function NewsClient() {
     loadNews();
   }, [loadNews]);
 
-  // Connect to Socket.io for live news stream
   useEffect(() => {
     const socket = getSocket();
 
@@ -104,7 +103,6 @@ export default function NewsClient() {
     };
   }, [success]);
 
-  // Filter and sort news
   const filteredAndSortedNews = useMemo(() => {
     const filtered = news.filter((item) => {
       const matchesCategory =
@@ -127,7 +125,6 @@ export default function NewsClient() {
       if (sortBy === "topMovers") {
         return Math.abs(b.percentChange ?? 0) - Math.abs(a.percentChange ?? 0);
       }
-      // default: latest first
       const timeA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
       const timeB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
       return timeB - timeA;
@@ -146,7 +143,6 @@ export default function NewsClient() {
 
         <main className="max-w-7xl mx-auto px-4 py-8">
           <FadeIn>
-            {/* Header with Live Status Indicator */}
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2.5">
@@ -187,7 +183,6 @@ export default function NewsClient() {
               </div>
             </div>
 
-            {/* Search & Category Filter Bar */}
             <div className="mb-6 space-y-3">
               <Input
                 value={searchQuery}
@@ -215,7 +210,6 @@ export default function NewsClient() {
                   ))}
                 </div>
 
-                {/* Toggle Sort Bar */}
                 <div className="flex items-center bg-gray-900 border border-gray-800 p-1 rounded-xl text-xs">
                   <span className="text-[11px] text-gray-500 font-semibold px-2 hidden sm:inline">
                     Sort:
@@ -257,7 +251,6 @@ export default function NewsClient() {
               </div>
             </div>
 
-            {/* Unread live news floating pill */}
             {unreadCount > 0 && (
               <div className="mb-4 flex justify-center sticky top-20 z-20">
                 <button
@@ -274,7 +267,6 @@ export default function NewsClient() {
             )}
           </FadeIn>
 
-          {/* Timeline Feed */}
           <FadeIn delay={0.05}>
             <div className="flex items-center justify-between text-xs text-gray-500 mb-3 px-1">
               <span>
