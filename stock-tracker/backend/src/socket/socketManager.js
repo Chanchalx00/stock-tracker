@@ -9,13 +9,6 @@ let io;
 const EMIT_INTERVAL_MS = 1_000;
 const intervals = new Map();
 const subscribers = new Map();
-
-// Live price streaming is only ever consumed from behind ProtectedRoute
-// pages on the frontend (dashboard/watchlist/charts) — there's no public
-// ticker. Requiring the same access token the REST API uses means an
-// unauthenticated client can't open a socket at all, closing off the
-// "open unlimited connections and subscribe to unlimited symbols" DoS
-// vector that existed when any client could connect freely.
 const MAX_SYMBOLS_PER_SOCKET = 50;
 const MAX_CONNECTIONS_PER_IP = 10;
 const connectionsByIp = new Map();

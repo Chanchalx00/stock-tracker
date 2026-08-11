@@ -11,8 +11,6 @@ const YAHOO_HEADERS = {
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
 };
 
-// Indian equities trade on NSE (.NS) or BSE (.BO). Default bare symbols to NSE.
-// Index symbols (e.g. ^NSEI, ^BSESN) are already fully qualified.
 const normalizeSymbol = (symbol) => {
   const clean = symbol.toUpperCase().trim();
   if (clean.startsWith("^")) return clean;
@@ -90,7 +88,6 @@ const getQuote = async (symbol) => {
 
 const SERIES_TTL = 60;
 
-// Intraday price series for chart rendering (e.g. index sparklines).
 const getChartSeries = async (symbol, { range = "1d", interval = "5m" } = {}) => {
   const normalized = normalizeSymbol(symbol);
   const cacheKey = `series:${normalized}:${range}:${interval}`;

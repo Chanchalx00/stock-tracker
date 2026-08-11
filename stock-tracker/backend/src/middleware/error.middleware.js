@@ -9,7 +9,10 @@ const normalizeValidationErrors = (errors) => {
     return errors.map((item) =>
       typeof item === "string"
         ? { field: "general", message: item }
-        : { field: item?.field ?? "general", message: item?.message ?? String(item) },
+        : {
+            field: item?.field ?? "general",
+            message: item?.message ?? String(item),
+          },
     );
   }
 
@@ -37,12 +40,6 @@ const sendError = (res, statusCode, message, validationErrors = null) => {
   });
 };
 
-// Central error handler — every asyncHandler-wrapped route funnels its
-// errors here instead of each controller deciding a status code and
-// logging it independently.
-// Express only treats a 4-arg function as error-handling middleware, so
-// `next` has to stay in the signature even though it's never called.
-// eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
   const statusCode = err instanceof ApiError ? err.statusCode : 500;
 
@@ -51,7 +48,11 @@ const errorHandler = (err, req, res, next) => {
       stack: err.stack,
       userId: req.user?._id ?? "unauthenticated",
     });
-    sentry.captureException(err, { method: req.method, url: req.originalUrl, userId: req.user?._id });
+    sentry.captureException(err, {
+      method: req.method,
+      url: req.originalUrl,
+      userId: req.user?._id,
+    });
   } else if (statusCode >= 400) {
     logger.warn(`[${req.method}] ${req.originalUrl} - ${err.message}`, {
       userId: req.user?._id ?? "unauthenticated",
@@ -60,7 +61,12 @@ const errorHandler = (err, req, res, next) => {
 
   if (err instanceof ApiError) {
     const validationErrors = normalizeValidationErrors(err.errors);
-    return sendError(res, err.statusCode, err.message, validationErrors.length ? validationErrors : null);
+    return sendError(
+      res,
+      err.statusCode,
+      err.message,
+      validationErrors.length ? validationErrors : null,
+    );
   }
 
   // Mongoose duplicate-key error

@@ -2,8 +2,6 @@ const fs = require("fs");
 const path = require("path");
 const winston = require("winston");
 
-// Prevent log injection attacks (\n fake entries, \r overwrite, etc.)
-// when a value that ends up in a log line originates from user input.
 const sanitizeLog = (value) =>
   String(value ?? "")
     .replace(/\p{Cc}/gu, " ")

@@ -1,5 +1,5 @@
-const nodemailer = require('nodemailer');
-const logger = require('../utils/logger');
+const nodemailer = require("nodemailer");
+const logger = require("../utils/logger");
 
 const isConfigured = Boolean(process.env.SMTP_HOST);
 
@@ -7,7 +7,7 @@ const transporter = isConfigured
   ? nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === 'true',
+      secure: process.env.SMTP_SECURE === "true",
       auth: process.env.SMTP_USER
         ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
         : undefined,
@@ -16,17 +16,18 @@ const transporter = isConfigured
 
 const sendPasswordResetEmail = async (to, resetUrl) => {
   if (!transporter) {
-    // No SMTP configured — print the link instead of silently doing
-    // nothing, so the reset flow is still testable in local dev without
-    // a real mail provider.
-    logger.warn(`SMTP not configured — password reset link for ${to}: ${resetUrl}`, { tag: 'EMAIL' });
+    logger.warn(
+      `SMTP not configured — password reset link for ${to}: ${resetUrl}`,
+      { tag: "EMAIL" },
+    );
     return;
   }
 
   await transporter.sendMail({
-    from: process.env.EMAIL_FROM || '"Stocklytics" <no-reply@stocklytics.local>',
+    from:
+      process.env.EMAIL_FROM || '"Stocklytics" <no-reply@stocklytics.local>',
     to,
-    subject: 'Reset your Stocklytics password',
+    subject: "Reset your Stocklytics password",
     text: `Someone requested a password reset for your Stocklytics account.\n\nReset your password: ${resetUrl}\n\nThis link expires in 1 hour. If you didn't request this, you can safely ignore this email.`,
     html: `
       <p>Someone requested a password reset for your Stocklytics account.</p>
@@ -35,7 +36,7 @@ const sendPasswordResetEmail = async (to, resetUrl) => {
     `,
   });
 
-  logger.info(`Password reset email sent to ${to}`, { tag: 'EMAIL' });
+  logger.info(`Password reset email sent to ${to}`, { tag: "EMAIL" });
 };
 
 module.exports = { sendPasswordResetEmail, isConfigured };

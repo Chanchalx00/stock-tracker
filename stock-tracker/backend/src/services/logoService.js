@@ -1,10 +1,6 @@
 const axios = require("axios");
 const { get, set } = require("../config/redis");
 
-// Curated symbol -> company domain lookup. Live logo/domain discovery APIs
-// (e.g. Clearbit's autocomplete) are unofficial and inconsistent for Indian
-// tickers, so this stays a small, explicit, backend-owned map — the single
-// source of truth the frontend no longer needs a copy of.
 const DOMAIN_MAP = {
   "RELIANCE.NS": "ril.com",
   "TCS.NS": "tcs.com",
@@ -49,7 +45,7 @@ const DOMAIN_MAP = {
   "BEL.NS": "bel-india.com",
 };
 
-const LOGO_TTL = 60 * 60 * 24; // 1 day — logos rarely change
+const LOGO_TTL = 60 * 60 * 24; 
 const LOGO_HEADERS = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" };
 
 const fetchImage = async (url) => {
@@ -68,8 +64,6 @@ const fetchImage = async (url) => {
   return { data: Buffer.from(res.data).toString("base64"), contentType };
 };
 
-// Tries a real logo first, then the company's own site favicon, caching
-// whichever succeeds (or the fact that neither did) for a day.
 const getLogo = async (symbol) => {
   const domain = DOMAIN_MAP[symbol.toUpperCase()];
   if (!domain) return null;
@@ -124,10 +118,6 @@ const escapeXml = (text) =>
 const initialsForSymbol = (symbol) =>
   symbol.replace(/^\^/, "").replace(/\.(NS|BO)$/i, "");
 
-// Scales the text down as the ticker gets longer so it always fits inside
-// the circle — computed here (as a fraction of the fixed 128x128 viewBox)
-// so it stays correct no matter what pixel size the <img> is displayed at,
-// instead of relying on CSS truncation/ellipsis on the frontend.
 const fontSizeForText = (text) => {
   const usableWidth = 100;
   const estimatedCharWidth = 0.62;
@@ -136,12 +126,6 @@ const fontSizeForText = (text) => {
   const fit = usableWidth / (text.length * estimatedCharWidth);
   return Math.round(Math.max(minFont, Math.min(maxFont, fit)));
 };
-
-// Generates an initials avatar for symbols with no resolvable company
-// logo, so the frontend's <img> always gets a valid 200 response instead
-// of ever hitting a broken-image state. Transparent background — the
-// frontend already renders logos on a white circular badge, so this
-// composites onto that the same way a real company logo would.
 const generateFallbackLogo = (symbol) => {
   const text = escapeXml(initialsForSymbol(symbol));
   const color = colorForSymbol(symbol);
