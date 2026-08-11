@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Navbar from "@/components/Navbar";
@@ -31,6 +32,7 @@ import {
   IconClose,
   IconError,
   IconWarning,
+  IconCalendar,
 } from "@/lib/icons";
 
 import { useToast } from "@/hooks/useToast";
@@ -121,6 +123,7 @@ export default function AiAnalysisClient() {
   const [loading, setLoading] = useState(true);
 
   const [expandedIpoId, setExpandedIpoId] = useState<string | null>(null);
+  const router = useRouter();
   const [selectedModalIpo, setSelectedModalIpo] = useState<IpoItem | null>(null);
 
   // Custom Stock Symbol Search State
@@ -147,18 +150,22 @@ export default function AiAnalysisClient() {
 
   const handleSearchStock = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchSymbol.trim()) return;
+    const query = searchSymbol.trim();
+    if (!query) return;
 
-    setSearchingStock(true);
-    try {
-      const { data } = await api.get(`/analysis/stock/${encodeURIComponent(searchSymbol.trim())}`);
-      setStockAnalysis(data.data);
-      setActiveTab("stock");
-      success(`AI Momentum Mantra generated for ${searchSymbol.toUpperCase()}`);
-    } catch {
-      toastError(`Could not generate AI analysis for ${searchSymbol}`);
-    } finally {
-      setSearchingStock(false);
+    // Direct navigate to Deep IPO Analysis Report for searched symbol/company name
+    const matchedIpo = ipos.find(
+      (item) =>
+        item.name.toLowerCase().includes(query.toLowerCase()) ||
+        item.symbol.toLowerCase() === query.toLowerCase()
+    );
+
+    const targetSym = matchedIpo
+      ? matchedIpo.symbol
+      : query.replace(/Limited|Ltd|IPO|\./gi, "").trim().split(" ")[0].toUpperCase();
+
+    if (targetSym) {
+      router.push(`/ai-analysis/${encodeURIComponent(targetSym)}`);
     }
   };
 
@@ -318,7 +325,13 @@ export default function AiAnalysisClient() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {ipos.map((ipo) => {
+                  {ipos
+                    .filter((ipo) => {
+                      if (!searchSymbol.trim()) return true;
+                      const q = searchSymbol.toLowerCase().trim();
+                      return ipo.name.toLowerCase().includes(q) || ipo.symbol.toLowerCase().includes(q);
+                    })
+                    .map((ipo) => {
                     const isExpanded = expandedIpoId === ipo.id;
                     const ratingClass = getRatingBadgeClass(ipo.rating);
 
@@ -330,7 +343,7 @@ export default function AiAnalysisClient() {
                         {/* Header: Logo, Name, AI Score Gauge, Rating */}
                         <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
                           <div className="flex items-center gap-3">
-                            <StockAvatar symbol={ipo.symbol} size={42} />
+                            <StockAvatar symbol={ipo.symbol} logoUrl={(ipo as any).logoUrl} size={42} />
                             <div>
                               <div className="flex items-center gap-2">
                                 <h3 className="text-lg font-bold text-white">
@@ -440,6 +453,21 @@ export default function AiAnalysisClient() {
                             <span className="text-[10px] text-gray-400 block mt-0.5">
                               Stop Loss: ₹{ipo.stopLoss}
                             </span>
+                          </div>
+                        </div>
+
+                        {/* IPO Schedule Event Dates Bar */}
+                        <div className="flex items-center justify-between flex-wrap gap-2 bg-gray-950/80 border border-gray-800/80 rounded-xl px-3.5 py-2 mb-3 text-[11px]">
+                          <div className="flex items-center gap-1.5 text-gray-400">
+                            <IconCalendar size={13} className="text-emerald-400" />
+                            <span className="font-semibold text-gray-300">IPO Schedule:</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-gray-400 flex-wrap font-mono">
+                            <span>Open: <strong className="text-emerald-400">{ipo.openDate || "Active"}</strong></span>
+                            <span>•</span>
+                            <span>Close: <strong className="text-amber-400">{ipo.closeDate || "Closing Soon"}</strong></span>
+                            <span>•</span>
+                            <span>Listing: <strong className="text-cyan-400">{ipo.listingDate || "T+5 Days"}</strong></span>
                           </div>
                         </div>
 
@@ -731,57 +759,75 @@ function IpoParametersModal({
 
         {/* Parameters Grid */}
         <div className="p-6 overflow-y-auto flex-1 space-y-3">
-          {filteredParams.map((param) => {
-            const isPass = param.status === "PASS";
-            const isWarn = param.status === "WARN";
+          {filteredParams.map((param: any) => {
+            const verdict = param.verdict || (param.status === "PASS" ? "Pass" : param.status === "WARN" ? "Caution" : "Fail");
+            const isPass = verdict === "Pass";
+            const isCaution = verdict === "Caution";
+
+            const displayValue = param.actual || param.value || "Evaluated";
+            
+            const autoCategory = param.category || (
+              param.id <= 6 ? "Governance & Moats" :
+              param.id <= 14 ? "Financials & Margins" :
+              param.id === 15 ? "Valuation & Pricing" : "Institutional Demand"
+            );
 
             return (
               <div
                 key={param.id}
                 className={`rounded-2xl p-4 border transition-all ${
                   isPass
-                    ? "bg-emerald-500/5 border-emerald-500/20"
-                    : isWarn
-                    ? "bg-amber-500/5 border-amber-500/20"
-                    : "bg-red-500/5 border-red-500/20"
+                    ? "bg-emerald-500/10 border-emerald-500/30"
+                    : isCaution
+                    ? "bg-amber-500/10 border-amber-500/30"
+                    : "bg-red-500/10 border-red-500/30"
                 }`}
               >
-                <div className="flex items-start justify-between gap-3 mb-1.5">
-                  <div className="flex items-center gap-2.5">
+                {/* Header Row: Title, Icon, Category, Verdict, Benchmark */}
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     {isPass ? (
-                      <div className="p-1 rounded-full bg-emerald-500/20 text-emerald-400">
+                      <div className="p-1 rounded-full bg-emerald-500/20 text-emerald-400 shrink-0">
                         <IconCheck size={15} />
                       </div>
-                    ) : isWarn ? (
-                      <div className="p-1 rounded-full bg-amber-500/20 text-amber-400">
+                    ) : isCaution ? (
+                      <div className="p-1 rounded-full bg-amber-500/20 text-amber-400 shrink-0">
                         <IconWarning size={15} />
                       </div>
                     ) : (
-                      <div className="p-1 rounded-full bg-red-500/20 text-red-400">
+                      <div className="p-1 rounded-full bg-red-500/20 text-red-400 shrink-0">
                         <IconError size={15} />
                       </div>
                     )}
                     <span className="font-bold text-white text-sm">
                       #{param.id} {param.name}
                     </span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-800 text-gray-400">
-                      {param.category}
+                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-800 text-gray-400 border border-gray-700">
+                      {autoCategory}
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider ${
+                      isPass ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
+                      isCaution ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                      "bg-red-500/20 text-red-400 border border-red-500/30"
+                    }`}>
+                      {verdict}
                     </span>
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="font-bold text-white font-mono text-sm block">
-                      {param.value}
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-mono block">
-                      Benchmark: {param.benchmark}
+                    <span className="text-[11px] text-gray-400 font-mono">
+                      Benchmark: <span className="text-gray-300 font-semibold">{param.benchmark}</span>
                     </span>
                   </div>
                 </div>
 
-                <p className="text-xs text-gray-300 pl-7 leading-relaxed font-medium">
-                  {param.explanation}
-                </p>
+                {/* Actual Value Box */}
+                <div className="mt-2.5 bg-gray-950/70 border border-gray-800/80 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <span className="text-xs font-semibold text-emerald-300 font-mono">
+                    <span className="text-gray-400 font-normal">Actual: </span>
+                    {displayValue}
+                  </span>
+                </div>
               </div>
             );
           })}

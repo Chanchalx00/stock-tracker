@@ -242,44 +242,48 @@ export default function StockDetailModal({
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
         className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl"
       >
-        <header className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-gray-800">
-          <div className="flex items-start gap-3 min-w-0">
-            <StockAvatar symbol={stock.symbol} size={44} className="mt-0.5" />
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 pt-5 pb-4 border-b border-gray-800">
+          <div className="flex items-center gap-3 min-w-0">
+            <StockAvatar symbol={stock.symbol.replace(/\.(NS|BO)$/i, "")} size={44} className="shrink-0" />
             <div className="min-w-0">
-              <h2 className="text-2xl font-bold text-white tracking-tight">
-                {stock.symbol}
-              </h2>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h2 className="text-xl font-bold text-white tracking-tight">
+                  {stock.symbol.replace(/\.(NS|BO)$/i, "")}
+                </h2>
+                <ChangeBadge value={stock.percentChange} />
+              </div>
               {stock.name && (
-                <p id="modal-company" className="text-sm text-gray-400 mt-0.5">
+                <p id="modal-company" className="text-xs text-gray-400 mt-0.5 truncate max-w-sm">
                   {stock.name}
                 </p>
               )}
             </div>
           </div>
 
-          <div className="text-right pr-8">
-            <p
-              className="text-2xl font-bold text-white"
-              aria-label={`Current price ${formatPrice(stock.currentPrice)}`}
-            >
-              {formatPrice(stock.currentPrice)}
-            </p>
-            <div className="mt-1">
-              <ChangeBadge value={stock.percentChange} />
+          <div className="flex items-center gap-3 shrink-0 pr-8">
+            <div className="text-right">
+              <span className="text-2xl font-bold text-white font-mono block">
+                {formatPrice(stock.currentPrice)}
+              </span>
+              <span
+                className={cn(
+                  "text-xs font-semibold font-mono block mt-0.5",
+                  isPositive ? "text-emerald-400" : "text-red-400",
+                )}
+              >
+                {stock.change >= 0 ? "+" : ""}
+                {formatPrice(stock.change)} ({formatPct(stock.percentChange)})
+              </span>
             </div>
           </div>
 
           <button
             ref={closeBtnRef}
             onClick={onClose}
-            aria-label="Close stock details dialog"
-            className={cn(
-              "absolute top-4 right-4 w-7 h-7 flex items-center justify-center rounded-full",
-              "text-gray-500 hover:text-white hover:bg-gray-800 transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
-            )}
+            aria-label="Close modal"
+            className="absolute top-5 right-5 p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-xl transition-colors"
           >
-            <IconClose size={16} aria-hidden="true" />
+            <IconClose size={18} />
           </button>
         </header>
 

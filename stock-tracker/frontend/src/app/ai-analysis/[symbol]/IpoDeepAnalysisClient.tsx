@@ -383,14 +383,17 @@ export default function IpoDeepAnalysisClient() {
                           key={idx}
                           className="bg-gray-950 border border-gray-800 rounded-2xl overflow-hidden group hover:border-gray-700 transition-all"
                         >
-                          <div className="h-48 w-full relative overflow-hidden bg-gray-900">
+                          <div className="h-48 w-full relative overflow-hidden bg-gray-950">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={item.imageUrl}
+                              src={item.imageUrl || "https://images.unsplash.com/photo-1509391365360-2e959784a276?auto=format&fit=crop&w=800&q=80"}
                               alt={item.title}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?auto=format&fit=crop&w=800&q=80";
+                              }}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-transparent to-transparent" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/20 to-transparent" />
                           </div>
                           <div className="p-4 space-y-1.5">
                             <h5 className="text-xs font-bold text-white flex items-center gap-1.5">
