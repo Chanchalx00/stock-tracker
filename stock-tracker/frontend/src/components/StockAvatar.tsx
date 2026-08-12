@@ -17,7 +17,7 @@ export default function StockAvatar({
   size = 36,
   className = "",
 }: StockAvatarProps) {
-  const [failed, setFailed] = useState(false);
+  const [imgState, setImgState] = useState<"primary" | "backend" | "failed">("primary");
   const cleanSym = symbol ? symbol.replace(/\.(NS|BO)$/i, "").toUpperCase() : "STOCK";
   const isIndex = cleanSym.startsWith("^");
 
@@ -39,7 +39,7 @@ export default function StockAvatar({
 
   const initialLetters = cleanSym.slice(0, 2);
 
-  if (failed) {
+  if (imgState === "failed") {
     return (
       <div
         aria-hidden="true"
@@ -51,15 +51,23 @@ export default function StockAvatar({
     );
   }
 
-  const imageSrc = logoUrl || `${API_BASE_URL}/stocks/logo/${encodeURIComponent(cleanSym)}`;
+  const primarySrc = logoUrl || `https://companiesmarketcap.com/img/company-logos/64/${cleanSym}.NS.png`;
+  const backendSrc = `${API_BASE_URL}/stocks/logo/${encodeURIComponent(cleanSym)}`;
+  const currentSrc = imgState === "primary" ? primarySrc : backendSrc;
 
   return (
     <img
-      src={imageSrc}
+      src={currentSrc}
       alt={`${cleanSym} logo`}
       width={size}
       height={size}
-      onError={() => setFailed(true)}
+      onError={() => {
+        if (imgState === "primary") {
+          setImgState("backend");
+        } else {
+          setImgState("failed");
+        }
+      }}
       className={`rounded-xl bg-white object-contain border border-gray-700 shrink-0 p-1 ${className}`}
       style={{ width: size, height: size }}
     />
