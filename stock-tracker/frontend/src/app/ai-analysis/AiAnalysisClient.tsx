@@ -313,7 +313,7 @@ export default function AiAnalysisClient() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                      Momentum Mantra & AI Analysis
+                       IPO & Equity AI Analysis
                     </h1>
                     <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
                       <IconSparkles size={12} className="animate-pulse" />
