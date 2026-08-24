@@ -114,7 +114,8 @@ export default function NewsList({
           );
         }
 
-        const volFactor = item.volFactor ?? 1.4;
+        // Null when the provider published no average volume to compare against.
+        const volFactor = item.volFactor ?? null;
 
         return (
           <li key={item.id || item.link || item.title || i} className="relative pl-7">
@@ -249,8 +250,8 @@ export default function NewsList({
                       Vol Factor
                     </span>
                     <span className="font-bold text-white font-mono text-xs flex items-center gap-1">
-                      <span>{volFactor.toFixed(1)}x Vol</span>
-                      {volFactor >= 2.0 && (
+                      <span>{volFactor !== null ? `${volFactor.toFixed(1)}x Vol` : "—"}</span>
+                      {volFactor !== null && volFactor >= 2.0 && (
                         <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
                           HIGH
                         </span>
