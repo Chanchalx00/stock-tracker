@@ -300,19 +300,19 @@ export default function AiAnalysisClient() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gray-950 text-white">
+      <div className="min-h-screen bg-gray-950 text-white overflow-x-hidden">
         <Navbar />
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-3 sm:px-4 py-5 sm:py-8">
           <FadeIn>
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-950/40">
+              <div className="flex items-start sm:items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-950/40 shrink-0">
                   <IconBrain size={24} aria-hidden="true" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-bold text-white tracking-tight">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
                       Momentum Mantra & AI Analysis
                     </h1>
                     <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/30 text-emerald-400">
@@ -332,6 +332,7 @@ export default function AiAnalysisClient() {
                 leftIcon={<IconRefresh size={14} />}
                 onClick={loadIpoAnalysis}
                 loading={loading}
+                className="w-full sm:w-auto justify-center"
               >
                 Refresh Engine
               </Button>
@@ -340,24 +341,24 @@ export default function AiAnalysisClient() {
             {summary && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shrink-0">
                     <IconFlame size={20} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] text-gray-500 font-semibold uppercase tracking-wider block">
                       Top AI Momentum Pick
                     </span>
-                    <span className="text-sm font-bold text-white">
+                    <span className="text-sm font-bold text-white break-words">
                       {summary.topPick}
                     </span>
                   </div>
                 </div>
 
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
                     <IconTrendingUp size={20} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] text-gray-500 font-semibold uppercase tracking-wider block">
                       Avg. Broker Subscribe Consensus
                     </span>
@@ -370,10 +371,10 @@ export default function AiAnalysisClient() {
                 </div>
 
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                  <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 shrink-0">
                     <IconAward size={20} />
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[11px] text-gray-500 font-semibold uppercase tracking-wider block">
                       Market Sentiment
                     </span>
@@ -385,12 +386,12 @@ export default function AiAnalysisClient() {
               </div>
             )}
 
-            <form onSubmit={handleSearchStock} className="mb-6 flex gap-2">
-              <div className="flex-1">
+            <form onSubmit={handleSearchStock} className="mb-6 flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 min-w-0">
                 <Input
                   value={searchSymbol}
                   onChange={(e) => setSearchSymbol(e.target.value)}
-                  placeholder="Analyze any stock symbol for AI Momentum Mantra (e.g. RELIANCE, TCS, INFY, TATAMOTORS)..."
+                  placeholder="Analyze any stock symbol (e.g. RELIANCE, TCS, INFY)..."
                   leftAddon={<IconSearch size={14} />}
                 />
               </div>
@@ -398,55 +399,59 @@ export default function AiAnalysisClient() {
                 type="submit"
                 loading={searchingStock}
                 leftIcon={<IconSparkles size={14} />}
+                className="w-full sm:w-auto justify-center shrink-0"
               >
                 Analyze
               </Button>
             </form>
 
-            <div className="flex items-center gap-2 border-b border-gray-800 mb-6 pb-2">
-              <button
-                onClick={() => setActiveTab("ipo")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === "ipo"
-                    ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
-                    : "bg-gray-900 border border-gray-800 text-gray-400 hover:text-white"
-                }`}
-              >
-                <IconFlame size={14} />
-                <span>Momentum Mantra IPOs ({ipos.length})</span>
-              </button>
+            {/* Tabs: horizontally scrollable on mobile so labels never overflow the viewport */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-800 mb-6 pb-2">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
+                <button
+                  onClick={() => setActiveTab("ipo")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                    activeTab === "ipo"
+                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                      : "bg-gray-900 border border-gray-800 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <IconFlame size={14} />
+                  <span>Momentum Mantra IPOs ({ipos.length})</span>
+                </button>
 
-              <button
-                onClick={() => setActiveTab("stock")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === "stock"
-                    ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
-                    : "bg-gray-900 border border-gray-800 text-gray-400 hover:text-white"
-                }`}
-              >
-                <IconActivity size={14} />
-                <span>Equity Momentum Screener</span>
-              </button>
+                <button
+                  onClick={() => setActiveTab("stock")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                    activeTab === "stock"
+                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                      : "bg-gray-900 border border-gray-800 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <IconActivity size={14} />
+                  <span>Equity Momentum Screener</span>
+                </button>
 
-              <button
-                onClick={() => setActiveTab("track")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  activeTab === "track"
-                    ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
-                    : "bg-gray-900 border border-gray-800 text-gray-400 hover:text-white"
-                }`}
-              >
-                <IconBarChart size={14} />
-                <span>IPO Track Record</span>
-              </button>
+                <button
+                  onClick={() => setActiveTab("track")}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 whitespace-nowrap ${
+                    activeTab === "track"
+                      ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+                      : "bg-gray-900 border border-gray-800 text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <IconBarChart size={14} />
+                  <span>IPO Track Record</span>
+                </button>
+              </div>
 
               {activeTab === "ipo" && (
-                <div className="flex items-center gap-1.5 ml-auto">
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0 sm:ml-auto">
                   {(["ALL", "MAINBOARD", "SME"] as const).map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setCategoryFilter(cat)}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors border ${
+                      className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors border shrink-0 whitespace-nowrap ${
                         categoryFilter === cat
                           ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
                           : "bg-gray-900 border-gray-800 text-gray-500 hover:text-white"
@@ -482,21 +487,21 @@ export default function AiAnalysisClient() {
                     return (
                       <div
                         key={ipo.id}
-                        className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl p-5 transition-all shadow-xl"
+                        className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl p-4 sm:p-5 transition-all shadow-xl"
                       >
-                        <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
-                          <div className="flex items-center gap-3">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+                          <div className="flex items-center gap-3 min-w-0">
                             <StockAvatar symbol={ipo.symbol} logoUrl={ipo.logoUrl} size={42} />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h3 className="text-lg font-bold text-white">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="text-base sm:text-lg font-bold text-white break-words">
                                   {ipo.name}
                                 </h3>
-                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400 border border-gray-700">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400 border border-gray-700 shrink-0">
                                   {ipo.category}
                                 </span>
                                 <span
-                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border shrink-0 ${
                                     ipo.status === "OPEN"
                                       ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40"
                                       : "bg-amber-500/20 text-amber-400 border-amber-500/40"
@@ -511,7 +516,7 @@ export default function AiAnalysisClient() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                             <Button
                               variant="secondary"
                               size="sm"
@@ -543,7 +548,7 @@ export default function AiAnalysisClient() {
                             )}
 
                             <div className="flex items-center gap-2 bg-gray-950 border border-gray-800 px-3 py-1.5 rounded-xl">
-                              <div className="relative w-9 h-9 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center font-bold text-emerald-400 font-mono text-xs">
+                              <div className="relative w-9 h-9 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center font-bold text-emerald-400 font-mono text-xs shrink-0">
                                 {ipo.aiScore}
                               </div>
                               <div>
@@ -625,18 +630,18 @@ export default function AiAnalysisClient() {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between flex-wrap gap-2 bg-gray-950/80 border border-gray-800/80 rounded-xl px-3.5 py-2 mb-3 text-[11px]">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-gray-950/80 border border-gray-800/80 rounded-xl px-3.5 py-2 mb-3 text-[11px]">
                           <div className="flex items-center gap-1.5 text-gray-400">
                             <IconCalendar size={13} className="text-emerald-400" />
                             <span className="font-semibold text-gray-300">IPO Schedule:</span>
                           </div>
                           <div className="flex items-center gap-3 text-gray-400 flex-wrap font-mono">
                             <span>Open: <strong className="text-emerald-400">{ipo.openDate || "Not announced"}</strong></span>
-                            <span>•</span>
+                            <span className="hidden sm:inline">•</span>
                             <span>Close: <strong className="text-amber-400">{ipo.closeDate || "Not announced"}</strong></span>
-                            <span>•</span>
+                            <span className="hidden sm:inline">•</span>
                             <span>Allotment: <strong className="text-purple-400">{ipo.allotmentDate || "Not announced"}</strong></span>
-                            <span>•</span>
+                            <span className="hidden sm:inline">•</span>
                             <span>Listing: <strong className="text-cyan-400">{ipo.listingDate || "Not announced"}</strong></span>
                           </div>
                         </div>
@@ -703,12 +708,12 @@ export default function AiAnalysisClient() {
           {activeTab === "stock" && (
             <FadeIn delay={0.05}>
               {stockAnalysis ? (
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-6">
-                  <div className="flex items-center justify-between flex-wrap gap-4">
-                    <div className="flex items-center gap-3">
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 sm:p-6 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div className="flex items-center gap-3 min-w-0">
                       <StockAvatar symbol={stockAnalysis.symbol} size={44} />
-                      <div>
-                        <h2 className="text-xl font-bold text-white">
+                      <div className="min-w-0">
+                        <h2 className="text-lg sm:text-xl font-bold text-white break-words">
                           {stockAnalysis.name || stockAnalysis.symbol}
                         </h2>
                         <div className="flex items-center gap-2 flex-wrap mt-0.5">
@@ -722,8 +727,8 @@ export default function AiAnalysisClient() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
+                    <div className="flex items-center justify-between sm:justify-end gap-3">
+                      <div className="text-left sm:text-right">
                         <p className="text-2xl font-bold text-white font-mono">
                           ₹{stockAnalysis.currentPrice.toFixed(2)}
                         </p>
@@ -737,7 +742,7 @@ export default function AiAnalysisClient() {
                         </span>
                       </div>
 
-                      <div className="px-4 py-2 rounded-xl bg-gray-950 border border-gray-800 text-center">
+                      <div className="px-4 py-2 rounded-xl bg-gray-950 border border-gray-800 text-center shrink-0">
                         <span className="text-[10px] text-gray-500 font-bold uppercase block">
                           Momentum Score
                         </span>
@@ -812,7 +817,7 @@ export default function AiAnalysisClient() {
                         ],
                       ] as const
                     ).map(([label, value, sub]) => (
-                      <div key={label} className="bg-gray-950 p-3.5 rounded-xl border border-gray-800">
+                      <div key={label} className="bg-gray-950 p-3 sm:p-3.5 rounded-xl border border-gray-800">
                         <span className="text-gray-500 font-semibold uppercase block text-[10px]">{label}</span>
                         <span
                           className={`text-sm font-bold font-mono ${value === null ? "text-gray-600" : "text-white"}`}
@@ -1029,7 +1034,7 @@ export default function AiAnalysisClient() {
                   </details>
                 </div>
               ) : (
-                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 sm:p-12 text-center">
                   <IconSearch size={32} className="mx-auto text-gray-600 mb-3" />
                   <p className="text-sm text-gray-400 font-medium">
                     Search any stock symbol above (e.g. RELIANCE, TCS, INFY) to generate a custom Momentum Mantra report.
@@ -1050,7 +1055,7 @@ export default function AiAnalysisClient() {
                   {trackSummary && (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-2">
                       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                        <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shrink-0">
                           <IconBarChart size={20} />
                         </div>
                         <div>
@@ -1062,7 +1067,7 @@ export default function AiAnalysisClient() {
                       </div>
 
                       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                        <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 shrink-0">
                           <IconBrain size={20} />
                         </div>
                         <div>
@@ -1074,7 +1079,7 @@ export default function AiAnalysisClient() {
                       </div>
 
                       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
                           <IconTarget size={20} />
                         </div>
                         <div>
@@ -1107,21 +1112,21 @@ export default function AiAnalysisClient() {
                   </p>
 
                   {trackRecords.length === 0 ? (
-                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+                    <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 sm:p-12 text-center">
                       <IconBarChart size={32} className="mx-auto text-gray-600 mb-3" />
                       <p className="text-sm text-gray-400 font-medium">No listed IPO track record available right now.</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto rounded-2xl border border-gray-800">
-                      <table className="w-full text-xs">
+                    <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-3 px-3 sm:mx-0 sm:px-0">
+                      <table className="w-full min-w-[720px] text-xs">
                         <thead className="bg-gray-900 border-b border-gray-800 text-gray-400 uppercase font-bold">
                           <tr>
-                            <th scope="col" className="text-left px-4 py-3">Company</th>
-                            <th scope="col" className="text-left px-4 py-3">Category</th>
-                            <th scope="col" className="text-right px-4 py-3">Listing Day Gain</th>
-                            <th scope="col" className="text-right px-4 py-3">Current Gain</th>
-                            <th scope="col" className="text-right px-4 py-3">AI Score / Rating</th>
-                            <th scope="col" className="text-center px-4 py-3">AI vs Real</th>
+                            <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">Company</th>
+                            <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">Category</th>
+                            <th scope="col" className="text-right px-4 py-3 whitespace-nowrap">Listing Day Gain</th>
+                            <th scope="col" className="text-right px-4 py-3 whitespace-nowrap">Current Gain</th>
+                            <th scope="col" className="text-right px-4 py-3 whitespace-nowrap">AI Score / Rating</th>
+                            <th scope="col" className="text-center px-4 py-3 whitespace-nowrap">AI vs Real</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800/80 text-gray-200 font-medium bg-gray-900/60">
@@ -1140,7 +1145,7 @@ export default function AiAnalysisClient() {
                                 : "bg-gray-800 text-gray-500 border-gray-700";
                             return (
                               <tr key={r.id || `${r.name}-${idx}`} className="hover:bg-gray-950/60 transition-colors">
-                                <td className="px-4 py-3 font-bold text-white">
+                                <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
                                   <div className="flex items-center gap-2">
                                     <StockAvatar symbol={r.id || r.name} logoUrl={r.logoUrl} size={24} />
                                     {r.sourceUrl ? (
@@ -1152,14 +1157,14 @@ export default function AiAnalysisClient() {
                                     )}
                                   </div>
                                 </td>
-                                <td className="px-4 py-3 text-gray-400">{r.category}</td>
-                                <td className={`px-4 py-3 text-right font-mono ${gainClass(r.listingGainPct)}`}>
+                                <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{r.category}</td>
+                                <td className={`px-4 py-3 text-right font-mono whitespace-nowrap ${gainClass(r.listingGainPct)}`}>
                                   {r.listingGainPct !== undefined ? `${r.listingGainPct >= 0 ? "+" : ""}${r.listingGainPct}%` : "—"}
                                 </td>
-                                <td className={`px-4 py-3 text-right font-mono font-bold ${gainClass(r.currentGainPct)}`}>
+                                <td className={`px-4 py-3 text-right font-mono font-bold whitespace-nowrap ${gainClass(r.currentGainPct)}`}>
                                   {r.currentGainPct !== undefined ? `${r.currentGainPct >= 0 ? "+" : ""}${r.currentGainPct}%` : "—"}
                                 </td>
-                                <td className="px-4 py-3 text-right font-mono">
+                                <td className="px-4 py-3 text-right font-mono whitespace-nowrap">
                                   {r.aiAvailable ? (
                                     <>
                                       <span className="text-white font-bold">{r.aiScore}/100</span>
@@ -1169,7 +1174,7 @@ export default function AiAnalysisClient() {
                                     <span className="text-gray-500">N/A</span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 text-center">
+                                <td className="px-4 py-3 text-center whitespace-nowrap">
                                   <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${comparisonClass}`}>
                                     {r.comparison || "N/A"}
                                   </span>
@@ -1255,20 +1260,20 @@ function IpoParametersModal({
   const passPercent = scored.length > 0 ? (passedCount / scored.length) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
       <div
-        className="bg-gray-950 border border-gray-800 rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative"
+        className="bg-gray-950 border border-gray-800 sm:rounded-3xl w-full h-full sm:h-auto max-w-4xl max-h-full sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 py-5 border-b border-gray-800 bg-gray-900/90 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-800 bg-gray-900/90 flex items-start sm:items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <StockAvatar symbol={ipo.symbol} size={40} />
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-white tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-xl font-bold text-white tracking-tight break-words">
                   {ipo.name} ({ipo.symbol})
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">
                   {passedCount} / {scored.length} PASSED
                 </span>
               </div>
@@ -1281,20 +1286,20 @@ function IpoParametersModal({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-colors shrink-0"
             aria-label="Close modal"
           >
             <IconClose size={20} />
           </button>
         </div>
 
-        <div className="px-6 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
-          <div className="flex justify-between items-center text-xs font-bold text-gray-400 mb-1.5">
-            <span>
+        <div className="px-4 sm:px-6 py-3 bg-gray-900 border-b border-gray-800 shrink-0">
+          <div className="flex justify-between items-center text-xs font-bold text-gray-400 mb-1.5 gap-2">
+            <span className="min-w-0 truncate">
               Weighted AI score {ipo.aiScore}/100 · {ipo.rating}
               {ipo.confidence && ` · ${ipo.confidence} confidence`}
             </span>
-            <span className="text-emerald-400 font-mono">{passPercent.toFixed(0)}% of scored parameters passed</span>
+            <span className="text-emerald-400 font-mono shrink-0">{passPercent.toFixed(0)}% passed</span>
           </div>
           <div className="w-full h-2.5 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
             <div
@@ -1304,12 +1309,12 @@ function IpoParametersModal({
           </div>
         </div>
 
-        <div className="px-6 py-3 border-b border-gray-800 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 bg-gray-950">
+        <div className="px-4 sm:px-6 py-3 border-b border-gray-800 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0 bg-gray-950">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setFilterCategory(cat)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors border ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors border shrink-0 ${
                 filterCategory === cat
                   ? "bg-emerald-500 text-black border-emerald-500 font-bold"
                   : "bg-gray-900 border-gray-800 text-gray-400 hover:text-white"
@@ -1320,13 +1325,13 @@ function IpoParametersModal({
           ))}
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1 space-y-3">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-3">
           {filteredParams.map((param) => {
             const tone = MODAL_VERDICT_TONE[param.verdict] ?? MODAL_VERDICT_TONE.Caution;
 
             return (
-              <div key={param.id} className={`rounded-2xl p-4 border transition-all ${tone.card}`}>
-                <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+              <div key={param.id} className={`rounded-2xl p-3 sm:p-4 border transition-all ${tone.card}`}>
+                <div className="flex items-start sm:items-center justify-between flex-wrap gap-2 mb-2">
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <div className={`p-1 rounded-full shrink-0 ${tone.icon}`}>
                       {param.verdict === "Pass" ? (
@@ -1355,8 +1360,8 @@ function IpoParametersModal({
                     )}
                   </div>
 
-                  <div className="text-right shrink-0">
-                    <span className="text-[11px] text-gray-400 font-mono">
+                  <div className="w-full sm:w-auto text-left sm:text-right sm:shrink-0">
+                    <span className="text-[11px] text-gray-400 font-mono break-words">
                       Benchmark: <span className="text-gray-300 font-semibold">{param.benchmark}</span>
                     </span>
                   </div>
@@ -1391,8 +1396,8 @@ function IpoParametersModal({
           })}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-800 bg-gray-900/90 flex justify-end shrink-0">
-          <Button variant="secondary" onClick={onClose}>
+        <div className="px-4 sm:px-6 py-4 border-t border-gray-800 bg-gray-900/90 flex justify-end shrink-0">
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto justify-center">
             Close Diagnostic
           </Button>
         </div>

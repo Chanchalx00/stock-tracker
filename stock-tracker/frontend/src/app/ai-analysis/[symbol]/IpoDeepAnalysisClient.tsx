@@ -374,20 +374,20 @@ export default function IpoDeepAnalysisClient() {
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-[#0b0e14] text-white">
+      <div className="min-h-screen bg-[#0b0e14] text-white overflow-x-hidden">
         <Navbar />
 
-        <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
-          <div className="flex items-center justify-between">
+        <main className="max-w-6xl mx-auto px-3 sm:px-4 py-5 sm:py-8 space-y-5 sm:space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <Link
               href="/ai-analysis"
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-gray-700 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-gray-700 text-xs font-semibold transition-colors w-fit"
             >
               <IconArrowLeft size={14} />
               <span>Back to AI Analysis Hub</span>
             </Link>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {data?.company.allotmentStatusUrl && (
                 <a
                   href={data.company.allotmentStatusUrl}
@@ -425,12 +425,12 @@ export default function IpoDeepAnalysisClient() {
           ) : (
             <>
               <FadeIn>
-                <div className="bg-gray-900 border border-emerald-500/30 rounded-2xl p-5 sm:p-6 flex items-center justify-between flex-wrap gap-4 shadow-2xl relative overflow-hidden">
-                  <div>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-emerald-400 tracking-tight">
+                <div className="bg-gray-900 border border-emerald-500/30 rounded-2xl p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-2xl relative overflow-hidden">
+                  <div className="min-w-0">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-emerald-400 tracking-tight break-words">
                       {data.company.name.toUpperCase()} IPO REVIEW
                     </h1>
-                    <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-800 text-gray-400 border border-gray-700">
                         {data.company.category}
                       </span>
@@ -462,10 +462,10 @@ export default function IpoDeepAnalysisClient() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 bg-gray-950 border border-gray-800 p-3 rounded-xl">
+                  <div className="flex items-center gap-3 bg-gray-950 border border-gray-800 p-3 rounded-xl w-full lg:w-auto">
                     <StockAvatar symbol={data.company.symbol} logoUrl={data.company.logoUrl} size={40} />
-                    <div>
-                      <span className="font-extrabold text-white text-sm block">{data.company.name}</span>
+                    <div className="min-w-0">
+                      <span className="font-extrabold text-white text-sm block truncate">{data.company.name}</span>
                       <span className="text-xs text-emerald-400 font-mono font-bold">
                         {data.metrics.aiScore}/100 · {data.metrics.rating}
                       </span>
@@ -480,7 +480,7 @@ export default function IpoDeepAnalysisClient() {
 
               {data.metrics.appliedCaps.length > 0 && (
                 <FadeIn delay={0.03}>
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 space-y-3">
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
                     <div className="flex items-start gap-2.5">
                       <IconWarning size={18} className="text-amber-400 shrink-0 mt-0.5" />
                       <div className="space-y-1">
@@ -497,7 +497,7 @@ export default function IpoDeepAnalysisClient() {
                     </div>
                     <ul className="space-y-2">
                       {data.metrics.appliedCaps.map((c, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-gray-300 leading-relaxed">
+                        <li key={i} className="flex items-start gap-2 text-xs text-gray-300 leading-relaxed flex-wrap">
                           <span className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-extrabold shrink-0 whitespace-nowrap">
                             Cap: {c.cap}
                           </span>
@@ -529,14 +529,14 @@ export default function IpoDeepAnalysisClient() {
               )}
 
               <FadeIn delay={0.05}>
-                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-7 space-y-6 shadow-xl">
+                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-4 sm:p-7 space-y-6 shadow-xl">
                   <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30 shrink-0">
                       1
                     </div>
-                    <div className="flex items-center gap-2">
-                      <IconBuilding size={20} className="text-emerald-400" />
-                      <h2 className="text-lg sm:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <IconBuilding size={20} className="text-emerald-400 shrink-0" />
+                      <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
                         COMPANY INTRODUCTION
                       </h2>
                     </div>
@@ -633,14 +633,14 @@ export default function IpoDeepAnalysisClient() {
                     </p>
                   </div>
 
-                  <div className="bg-emerald-500/10 border-l-4 border-l-emerald-500 border-y border-r border-gray-800 rounded-xl p-3.5 flex items-center justify-between flex-wrap gap-4 text-emerald-400 font-bold">
-                    <div className="flex items-center gap-2">
-                      <IconTrendingUp size={18} />
-                      <span className="text-lg font-mono tracking-tight">
+                  <div className="bg-emerald-500/10 border-l-4 border-l-emerald-500 border-y border-r border-gray-800 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-emerald-400 font-bold">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <IconTrendingUp size={18} className="shrink-0" />
+                      <span className="text-base sm:text-lg font-mono tracking-tight break-words">
                         {data.company.details.marketCap ? `Market Cap: ${data.company.details.marketCap}` : "Market Cap: Not yet listed"}
                       </span>
                     </div>
-                    <div className="text-xs uppercase tracking-wider text-emerald-300 bg-emerald-500/20 px-3 py-1 rounded-lg border border-emerald-500/30">
+                    <div className="text-xs uppercase tracking-wider text-emerald-300 bg-emerald-500/20 px-3 py-1 rounded-lg border border-emerald-500/30 self-start sm:self-auto shrink-0">
                       {data.metrics.rating}
                     </div>
                   </div>
@@ -682,11 +682,11 @@ export default function IpoDeepAnalysisClient() {
                         <IconBarChartIcon />
                         <span>Financial Snapshot ({data.company.financials.currency || "₹ Crore"}, as published)</span>
                       </h4>
-                      <div className="overflow-x-auto rounded-2xl border border-gray-800">
-                        <table className="w-full text-xs">
+                      <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-3 px-3 sm:mx-0 sm:px-0">
+                        <table className="w-full min-w-[480px] text-xs">
                           <thead className="bg-gray-950 border-b border-gray-800 text-gray-400 uppercase font-semibold">
                             <tr>
-                              <th scope="col" className="text-left px-4 py-3">
+                              <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">
                                 Metric (source label)
                               </th>
                               {data.company.financialCards.map((c) => (
@@ -775,12 +775,12 @@ export default function IpoDeepAnalysisClient() {
               </FadeIn>
 
               <FadeIn delay={0.08}>
-                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-7 space-y-6 shadow-xl">
+                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-4 sm:p-7 space-y-6 shadow-xl">
                   <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30 shrink-0">
                       2
                     </div>
-                    <h2 className="text-lg sm:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
+                    <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
                       IPO DETAILS & TIMELINE DATES
                     </h2>
                   </div>
@@ -806,8 +806,8 @@ export default function IpoDeepAnalysisClient() {
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto rounded-2xl border border-gray-800">
-                    <table className="w-full text-xs">
+                  <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-3 px-3 sm:mx-0 sm:px-0">
+                    <table className="w-full min-w-[420px] text-xs">
                       <thead className="bg-emerald-500/10 border-b border-gray-800 text-emerald-400 uppercase font-bold">
                         <tr>
                           <th scope="col" className="text-left px-5 py-3.5 w-1/3">
@@ -850,23 +850,23 @@ export default function IpoDeepAnalysisClient() {
                       <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
                         IPO Lot Size & Category Investment Table
                       </h3>
-                      <div className="overflow-x-auto rounded-2xl border border-gray-800">
-                        <table className="w-full text-xs">
+                      <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-3 px-3 sm:mx-0 sm:px-0">
+                        <table className="w-full min-w-[520px] text-xs">
                           <thead className="bg-gray-950 border-b border-gray-800 text-gray-400 uppercase font-semibold">
                             <tr>
-                              <th scope="col" className="text-left px-4 py-3">APPLICATION CATEGORY</th>
-                              <th scope="col" className="text-left px-4 py-3">LOTS</th>
-                              <th scope="col" className="text-left px-4 py-3">SHARES</th>
-                              <th scope="col" className="text-right px-4 py-3">TOTAL INVESTMENT</th>
+                              <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">APPLICATION CATEGORY</th>
+                              <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">LOTS</th>
+                              <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">SHARES</th>
+                              <th scope="col" className="text-right px-4 py-3 whitespace-nowrap">TOTAL INVESTMENT</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-800 text-gray-200 font-medium">
                             {data.company.lotBreakup.map((lb, idx) => (
                               <tr key={idx} className="hover:bg-gray-950/60 transition-colors">
-                                <td className="px-4 py-3 font-bold text-white">{lb.category}</td>
-                                <td className="px-4 py-3 font-mono text-gray-300">{lb.lots}</td>
-                                <td className="px-4 py-3 font-mono text-gray-300">{lb.shares}</td>
-                                <td className="px-4 py-3 font-mono font-bold text-emerald-400 text-right">{lb.amount}</td>
+                                <td className="px-4 py-3 font-bold text-white whitespace-nowrap">{lb.category}</td>
+                                <td className="px-4 py-3 font-mono text-gray-300 whitespace-nowrap">{lb.lots}</td>
+                                <td className="px-4 py-3 font-mono text-gray-300 whitespace-nowrap">{lb.shares}</td>
+                                <td className="px-4 py-3 font-mono font-bold text-emerald-400 text-right whitespace-nowrap">{lb.amount}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -917,21 +917,21 @@ export default function IpoDeepAnalysisClient() {
                           </span>
                         </div>
                       ) : null}
-                      <div className="overflow-x-auto rounded-2xl border border-gray-800">
-                        <table className="w-full text-xs">
+                      <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-3 px-3 sm:mx-0 sm:px-0">
+                        <table className="w-full min-w-[560px] text-xs">
                           <thead className="bg-gray-950 border-b border-gray-800 text-gray-400 uppercase font-semibold">
                             <tr>
-                              <th scope="col" className="text-left px-4 py-3">NAME</th>
-                              <th scope="col" className="text-left px-4 py-3">CATEGORY</th>
-                              <th scope="col" className="text-left px-4 py-3">SHARES OFFERED</th>
-                              <th scope="col" className="text-right px-4 py-3">AMOUNT (₹ CR)</th>
+                              <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">NAME</th>
+                              <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">CATEGORY</th>
+                              <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">SHARES OFFERED</th>
+                              <th scope="col" className="text-right px-4 py-3 whitespace-nowrap">AMOUNT (₹ CR)</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-800 text-gray-200 font-medium">
                             {data.company.ofsShareholders.map((s, idx) => (
                               <tr key={idx} className="hover:bg-gray-950/60 transition-colors">
-                                <td className="px-4 py-3 font-bold text-white">{s.name}</td>
-                                <td className="px-4 py-3">
+                                <td className="px-4 py-3 font-bold text-white whitespace-nowrap">{s.name}</td>
+                                <td className="px-4 py-3 whitespace-nowrap">
                                   <span
                                     className={
                                       /promoter/i.test(s.category || "")
@@ -942,8 +942,8 @@ export default function IpoDeepAnalysisClient() {
                                     {s.category || "—"}
                                   </span>
                                 </td>
-                                <td className="px-4 py-3 font-mono text-gray-300">{s.shares || "—"}</td>
-                                <td className="px-4 py-3 font-mono text-amber-400 text-right">{s.amountCr ?? "—"}</td>
+                                <td className="px-4 py-3 font-mono text-gray-300 whitespace-nowrap">{s.shares || "—"}</td>
+                                <td className="px-4 py-3 font-mono text-amber-400 text-right whitespace-nowrap">{s.amountCr ?? "—"}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -971,7 +971,7 @@ export default function IpoDeepAnalysisClient() {
                           .map(([label, v]) => (
                             <div
                               key={label}
-                              className="bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-center min-w-23"
+                              className="bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-center min-w-[92px]"
                             >
                               <span className="text-[10px] text-gray-500 font-bold uppercase block">{label}</span>
                               <span
@@ -1001,24 +1001,24 @@ export default function IpoDeepAnalysisClient() {
                       <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">
                         Recently Listed {data.company.sector || "Sector"} IPOs — Actual Listing Outcomes
                       </h3>
-                      <div className="overflow-x-auto rounded-2xl border border-gray-800">
-                        <table className="w-full text-xs">
+                      <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-3 px-3 sm:mx-0 sm:px-0">
+                        <table className="w-full min-w-[480px] text-xs">
                           <thead className="bg-gray-950 border-b border-gray-800 text-gray-400 uppercase font-semibold">
                             <tr>
-                              <th scope="col" className="text-left px-4 py-3">COMPANY</th>
-                              <th scope="col" className="text-left px-4 py-3">BOARD</th>
-                              <th scope="col" className="text-right px-4 py-3">P/E AT ISSUE</th>
-                              <th scope="col" className="text-right px-4 py-3">LISTING GAIN</th>
+                              <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">COMPANY</th>
+                              <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">BOARD</th>
+                              <th scope="col" className="text-right px-4 py-3 whitespace-nowrap">P/E AT ISSUE</th>
+                              <th scope="col" className="text-right px-4 py-3 whitespace-nowrap">LISTING GAIN</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-800 text-gray-200 font-medium">
                             {data.company.sectorPeers.map((p, idx) => (
                               <tr key={idx} className="hover:bg-gray-950/60 transition-colors">
-                                <td className="px-4 py-3 font-bold text-white">{p.name}</td>
-                                <td className="px-4 py-3 text-gray-400">{p.issueType || "—"}</td>
-                                <td className="px-4 py-3 font-mono text-gray-300 text-right">{p.peRatio ?? "—"}</td>
+                                <td className="px-4 py-3 font-bold text-white whitespace-nowrap">{p.name}</td>
+                                <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{p.issueType || "—"}</td>
+                                <td className="px-4 py-3 font-mono text-gray-300 text-right whitespace-nowrap">{p.peRatio ?? "—"}</td>
                                 <td
-                                  className={`px-4 py-3 font-mono font-bold text-right ${
+                                  className={`px-4 py-3 font-mono font-bold text-right whitespace-nowrap ${
                                     (p.listingGainPct ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"
                                   }`}
                                 >
@@ -1041,14 +1041,14 @@ export default function IpoDeepAnalysisClient() {
               </FadeIn>
 
               <FadeIn delay={0.09}>
-                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-7 space-y-5 shadow-xl">
+                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-4 sm:p-7 space-y-5 shadow-xl">
                   <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30 shrink-0">
                       3
                     </div>
-                    <div className="flex items-center gap-2">
-                      <IconDollar size={20} className="text-emerald-400" />
-                      <h2 className="text-lg sm:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <IconDollar size={20} className="text-emerald-400 shrink-0" />
+                      <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
                         FUND UTILIZATION
                       </h2>
                     </div>
@@ -1145,46 +1145,46 @@ export default function IpoDeepAnalysisClient() {
               </FadeIn>
 
               <FadeIn delay={0.1}>
-                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-7 space-y-5 shadow-xl">
-                  <div className="flex items-center justify-between flex-wrap gap-4 border-b border-gray-800 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30">
+                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-4 sm:p-7 space-y-5 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-800 pb-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30 shrink-0">
                         4
                       </div>
-                      <div className="flex items-center gap-2">
-                        <IconTarget size={20} className="text-emerald-400" />
-                        <h2 className="text-lg sm:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                        <IconTarget size={20} className="text-emerald-400 shrink-0" />
+                        <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
                           {data.metrics.parameterCount}-PARAMETER IPO FRAMEWORK
                         </h2>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="px-3 py-1.5 rounded-2xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 text-xs">
+                      <span className="px-3 py-1.5 rounded-2xl bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/40 text-xs whitespace-nowrap">
                         {data.metrics.passedCount} / {data.metrics.scoredCount} PASSED
                       </span>
-                      <span className="px-3 py-1.5 rounded-2xl bg-gray-800 text-gray-300 font-bold border border-gray-700 text-xs">
+                      <span className="px-3 py-1.5 rounded-2xl bg-gray-800 text-gray-300 font-bold border border-gray-700 text-xs whitespace-nowrap">
                         {data.metrics.weightEarned} / {data.metrics.weightTotal} WEIGHT
                       </span>
                     </div>
                   </div>
 
                   <p className="text-xs text-gray-400 leading-relaxed">
-                    Every row is scored against a fixed benchmark and weighted by how much it matters. Click any row to
+                    Every row is scored against a fixed benchmark and weighted by how much it matters. Tap any row to
                     see why the parameter matters, what this specific value means, and exactly which source table the
                     figure came from.
                   </p>
 
-                  <div className="overflow-x-auto rounded-2xl border border-gray-800">
-                    <table className="w-full text-xs">
+                  <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-3 px-3 sm:mx-0 sm:px-0">
+                    <table className="w-full min-w-[760px] text-xs">
                       <thead className="bg-emerald-500/10 border-b border-gray-800 text-emerald-400 uppercase font-bold">
                         <tr>
-                          <th scope="col" className="text-left px-4 py-3.5 w-12">NO.</th>
-                          <th scope="col" className="text-left px-4 py-3.5">PARAMETER</th>
-                          <th scope="col" className="text-center px-2 py-3.5 w-14">WT</th>
-                          <th scope="col" className="text-left px-4 py-3.5">BENCHMARK</th>
-                          <th scope="col" className="text-left px-4 py-3.5">ACTUAL</th>
-                          <th scope="col" className="text-center px-4 py-3.5 w-32">VERDICT</th>
+                          <th scope="col" className="text-left px-4 py-3.5 w-12 whitespace-nowrap">NO.</th>
+                          <th scope="col" className="text-left px-4 py-3.5 whitespace-nowrap">PARAMETER</th>
+                          <th scope="col" className="text-center px-2 py-3.5 w-14 whitespace-nowrap">WT</th>
+                          <th scope="col" className="text-left px-4 py-3.5 whitespace-nowrap">BENCHMARK</th>
+                          <th scope="col" className="text-left px-4 py-3.5 whitespace-nowrap">ACTUAL</th>
+                          <th scope="col" className="text-center px-4 py-3.5 w-32 whitespace-nowrap">VERDICT</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800/80 font-medium">
@@ -1199,8 +1199,8 @@ export default function IpoDeepAnalysisClient() {
                                 onClick={() => setOpenParamId(isOpen ? null : param.id)}
                                 aria-expanded={isOpen}
                               >
-                                <td className="px-4 py-3 font-mono font-bold text-gray-400 text-center">{param.id}</td>
-                                <td className="px-4 py-3 font-bold text-white">
+                                <td className="px-4 py-3 font-mono font-bold text-gray-400 text-center whitespace-nowrap">{param.id}</td>
+                                <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
                                   <span className="flex items-center gap-1.5">
                                     {param.name}
                                     {isOpen ? (
@@ -1210,12 +1210,12 @@ export default function IpoDeepAnalysisClient() {
                                     )}
                                   </span>
                                 </td>
-                                <td className="px-2 py-3 text-center font-mono text-gray-500">
+                                <td className="px-2 py-3 text-center font-mono text-gray-500 whitespace-nowrap">
                                   {param.weight > 0 ? param.weight : "—"}
                                 </td>
-                                <td className="px-4 py-3 font-mono text-gray-300">{param.benchmark}</td>
-                                <td className="px-4 py-3 font-mono text-gray-200">{param.actual}</td>
-                                <td className="px-4 py-3 text-center">
+                                <td className="px-4 py-3 font-mono text-gray-300 whitespace-nowrap">{param.benchmark}</td>
+                                <td className="px-4 py-3 font-mono text-gray-200 whitespace-nowrap">{param.actual}</td>
+                                <td className="px-4 py-3 text-center whitespace-nowrap">
                                   <VerdictPill verdict={param.verdict} />
                                 </td>
                               </tr>
@@ -1288,12 +1288,12 @@ export default function IpoDeepAnalysisClient() {
               </FadeIn>
 
               <FadeIn delay={0.11}>
-                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-7 space-y-5 shadow-xl">
+                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-4 sm:p-7 space-y-5 shadow-xl">
                   <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30 shrink-0">
                       5
                     </div>
-                    <h2 className="text-lg sm:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
+                    <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
                       GREEN, NEUTRAL &amp; RED FLAGS
                     </h2>
                   </div>
@@ -1411,21 +1411,21 @@ export default function IpoDeepAnalysisClient() {
               </FadeIn>
 
               <FadeIn delay={0.12}>
-                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-7 space-y-5 shadow-xl">
-                  <div className="flex items-center justify-between flex-wrap gap-4 border-b border-gray-800 pb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30">
+                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-4 sm:p-7 space-y-5 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-800 pb-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30 shrink-0">
                         6
                       </div>
-                      <div className="flex items-center gap-2">
-                        <IconWarning size={20} className="text-amber-400" />
-                        <h2 className="text-lg sm:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
+                      <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                        <IconWarning size={20} className="text-amber-400 shrink-0" />
+                        <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
                           RISK FACTOR ANALYSIS
                         </h2>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-xl text-xs font-bold text-amber-300">
+                    <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-3.5 py-1.5 rounded-xl text-xs font-bold text-amber-300 self-start sm:self-auto">
                       <span>Overall Risk Rating:</span>
                       <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-400 font-extrabold">
                         {data.company.riskFactorAnalysis.overallRating}
@@ -1469,14 +1469,14 @@ export default function IpoDeepAnalysisClient() {
               </FadeIn>
 
               <FadeIn delay={0.14}>
-                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-7 space-y-6 shadow-xl">
+                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-4 sm:p-7 space-y-6 shadow-xl">
                   <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30 shrink-0">
                       7
                     </div>
-                    <div className="flex items-center gap-2">
-                      <IconBookmark size={20} className="text-emerald-400" />
-                      <h2 className="text-lg sm:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <IconBookmark size={20} className="text-emerald-400 shrink-0" />
+                      <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
                         FINAL OBSERVATIONS
                       </h2>
                     </div>
@@ -1536,14 +1536,14 @@ export default function IpoDeepAnalysisClient() {
                     )}
                   </div>
 
-                  <div className="bg-[#1e232e] border border-gray-700/80 rounded-2xl p-5 space-y-3 relative overflow-hidden">
-                    <div className="flex items-center justify-between flex-wrap gap-3 border-b border-gray-700/80 pb-3">
+                  <div className="bg-[#1e232e] border border-gray-700/80 rounded-2xl p-4 sm:p-5 space-y-3 relative overflow-hidden">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-700/80 pb-3">
                       <h4 className="text-xs font-extrabold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                        <IconLightbulb size={16} className="text-amber-400" />
+                        <IconLightbulb size={16} className="text-amber-400 shrink-0" />
                         <span>Summary & Closing Framework Rating</span>
                       </h4>
 
-                      <div className="px-3.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 font-extrabold text-xs border border-amber-500/40 flex items-center gap-1.5">
+                      <div className="px-3.5 py-1 rounded-xl bg-amber-500/20 text-amber-300 font-extrabold text-xs border border-amber-500/40 flex items-center gap-1.5 self-start sm:self-auto">
                         <span>Rating:</span>
                         <span className="text-amber-400 font-mono text-sm">
                           {data.company.finalObservations.closingRating}
@@ -1559,14 +1559,14 @@ export default function IpoDeepAnalysisClient() {
               </FadeIn>
 
               <FadeIn delay={0.16}>
-                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-7 space-y-6 shadow-xl">
+                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-4 sm:p-7 space-y-6 shadow-xl">
                   <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30 shrink-0">
                       8
                     </div>
-                    <div className="flex items-center gap-2">
-                      <IconTarget size={20} className="text-emerald-400" />
-                      <h2 className="text-lg sm:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <IconTarget size={20} className="text-emerald-400 shrink-0" />
+                      <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
                         FINAL DASHBOARD (CONCLUSION PAGE)
                       </h2>
                     </div>
@@ -1602,7 +1602,7 @@ export default function IpoDeepAnalysisClient() {
                           }`}
                         >
                           <span
-                            className={`text-3xl font-extrabold font-mono block ${
+                            className={`text-2xl sm:text-3xl font-extrabold font-mono block ${
                               tone === "emerald"
                                 ? "text-emerald-400"
                                 : tone === "amber"
@@ -1634,13 +1634,13 @@ export default function IpoDeepAnalysisClient() {
                       FINAL DASHBOARD CATEGORY SUMMARY
                     </h3>
 
-                    <div className="overflow-x-auto rounded-2xl border border-gray-800">
-                      <table className="w-full text-xs">
+                    <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-3 px-3 sm:mx-0 sm:px-0">
+                      <table className="w-full min-w-[560px] text-xs">
                         <thead className="bg-emerald-500/10 border-b border-gray-800 text-emerald-400 uppercase font-bold">
                           <tr>
-                            <th scope="col" className="text-left px-5 py-3.5">CATEGORY</th>
+                            <th scope="col" className="text-left px-5 py-3.5 whitespace-nowrap">CATEGORY</th>
                             <th scope="col" className="text-left px-5 py-3.5">DRIVEN BY</th>
-                            <th scope="col" className="text-right px-5 py-3.5 w-48">STATUS</th>
+                            <th scope="col" className="text-right px-5 py-3.5 w-48 whitespace-nowrap">STATUS</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800/80 text-gray-200 font-medium">
@@ -1664,11 +1664,11 @@ export default function IpoDeepAnalysisClient() {
 
                             return (
                               <tr key={idx} className="hover:bg-gray-950/60 transition-colors">
-                                <td className="px-5 py-3.5 font-bold text-white">{item.category}</td>
+                                <td className="px-5 py-3.5 font-bold text-white whitespace-nowrap">{item.category}</td>
                                 <td className="px-5 py-3.5 text-[11px] text-gray-500 font-normal">
                                   {item.driver || "—"}
                                 </td>
-                                <td className="px-5 py-3.5 text-right">
+                                <td className="px-5 py-3.5 text-right whitespace-nowrap">
                                   <span
                                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold border ${tone}`}
                                   >
@@ -1691,14 +1691,14 @@ export default function IpoDeepAnalysisClient() {
               </FadeIn>
 
               <FadeIn delay={0.18}>
-                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-5 sm:p-7 space-y-6 shadow-xl">
+                <div className="bg-gray-900/90 border border-gray-800 rounded-2xl p-4 sm:p-7 space-y-6 shadow-xl">
                   <div className="flex items-center gap-3 border-b border-gray-800 pb-4">
-                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30">
+                    <div className="w-8 h-8 rounded-full bg-emerald-500 text-black font-extrabold flex items-center justify-center text-sm shadow-md shadow-emerald-500/30 shrink-0">
                       9
                     </div>
-                    <div className="flex items-center gap-2">
-                      <IconLightbulb size={20} className="text-emerald-400" />
-                      <h2 className="text-lg sm:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
+                    <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                      <IconLightbulb size={20} className="text-emerald-400 shrink-0" />
+                      <h2 className="text-base sm:text-lg lg:text-xl font-extrabold text-emerald-400 tracking-wide uppercase">
                         HOW TO READ THESE RESULTS
                       </h2>
                     </div>
@@ -1719,7 +1719,7 @@ export default function IpoDeepAnalysisClient() {
                       ).map(([label, value, color]) => (
                         <div key={label} className="bg-gray-950 border border-gray-800 rounded-xl p-3.5 text-center">
                           <span className="text-[10px] text-gray-500 font-bold uppercase block">{label}</span>
-                          <span className={`text-base font-extrabold font-mono ${color}`}>{value}</span>
+                          <span className={`text-sm sm:text-base font-extrabold font-mono ${color}`}>{value}</span>
                         </div>
                       ))}
                     </div>
@@ -1754,12 +1754,12 @@ export default function IpoDeepAnalysisClient() {
                     <h3 className="text-xs font-extrabold text-emerald-400 uppercase tracking-wider">
                       What the rating means
                     </h3>
-                    <div className="overflow-x-auto rounded-2xl border border-gray-800">
-                      <table className="w-full text-xs">
+                    <div className="overflow-x-auto rounded-2xl border border-gray-800 -mx-3 px-3 sm:mx-0 sm:px-0">
+                      <table className="w-full min-w-[560px] text-xs">
                         <thead className="bg-gray-950 border-b border-gray-800 text-gray-400 uppercase font-semibold">
                           <tr>
-                            <th scope="col" className="text-left px-4 py-3">RATING</th>
-                            <th scope="col" className="text-left px-4 py-3 w-24">SCORE</th>
+                            <th scope="col" className="text-left px-4 py-3 whitespace-nowrap">RATING</th>
+                            <th scope="col" className="text-left px-4 py-3 w-24 whitespace-nowrap">SCORE</th>
                             <th scope="col" className="text-left px-4 py-3">MEANING</th>
                           </tr>
                         </thead>
@@ -1783,7 +1783,7 @@ export default function IpoDeepAnalysisClient() {
                                     </span>
                                   )}
                                 </td>
-                                <td className="px-4 py-3 font-mono text-gray-400">{r.band}</td>
+                                <td className="px-4 py-3 font-mono text-gray-400 whitespace-nowrap">{r.band}</td>
                                 <td className="px-4 py-3 font-normal leading-relaxed">{r.meaning}</td>
                               </tr>
                             );
@@ -1803,7 +1803,7 @@ export default function IpoDeepAnalysisClient() {
                     <div className="space-y-2.5">
                       {data.resultGuide.weightByCategory.map((w) => (
                         <div key={w.category} className="space-y-1">
-                          <div className="flex items-center justify-between text-[11px] gap-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-[11px] gap-1 sm:gap-2">
                             <span className="font-bold text-gray-300">{w.category}</span>
                             <span className="font-mono text-gray-500 shrink-0">
                               {w.weight} of {w.designedWeight} pts · {w.sharePct}% of score
