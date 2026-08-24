@@ -1,545 +1,641 @@
-const { getQuote, getQuoteSafe } = require('../services/stockService');
-const { fetchChittorgarhIpoDetails, fetchLiveIpoListFromChittorgarh } = require('../services/chittorgarhService');
+const { getQuote, getChartSeries } = require("../services/stockService");
+const { computeTechnicals } = require("../services/technicals");
+const {
+  fetchChittorgarhIpoDetails,
+  fetchLiveIpoListFromChittorgarh,
+  fetchListedIpoTrackRecord,
+} = require("../services/chittorgarhService");
+const { analyseIpo, extractCr, VERDICT } = require("../services/ipoFramework");
+const { ApiError } = require("../utils/ApiError");
+const { ApiResponse } = require("../utils/ApiResponse");
+const { asyncHandler } = require("../utils/asyncHandler");
 
-const calculateAiRating = (score) => {
-  if (score >= 85) return "STRONG APPLY";
-  if (score >= 75) return "APPLY FOR LISTING GAIN";
-  if (score >= 65) return "APPLY LONG TERM";
-  return "AVOID";
-};
-
-const evaluateVerdict = (value, passThreshold, cautionThreshold = null, isLowerBetter = false) => {
-  if (typeof value !== "number" || isNaN(value)) return "Caution";
-
-  if (!isLowerBetter) {
-    if (value >= passThreshold) return "Pass";
-    if (cautionThreshold !== null && value >= cautionThreshold) return "Caution";
-    return "Fail";
-  } else {
-    if (value <= passThreshold) return "Pass";
-    if (cautionThreshold !== null && value <= cautionThreshold) return "Caution";
-    return "Fail";
+const getMarketTrendText = async () => {
+  try {
+    const quote = await getQuote("^NSEI");
+    const pct = quote.percentChange ?? 0;
+    if (pct >= 0.5) return { text: `Nifty 50 up ${pct.toFixed(2)}% today — markets in a positive trend`, verdict: "Pass" };
+    if (pct >= -0.5) return { text: `Nifty 50 ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(2)}% today — broadly flat`, verdict: "Caution" };
+    return { text: `Nifty 50 down ${Math.abs(pct).toFixed(2)}% today — markets under pressure`, verdict: "Fail" };
+  } catch {
+    return { text: "Live market index data unavailable", verdict: "Caution" };
   }
 };
 
-const generate20Parameters = ({
-  companyName,
-  issuePrice,
-  currentPrice,
-  gmpPercent,
-  freshIssueStr,
-  ofsStr,
-  prePromoter,
-  postPromoter,
-  salesGrowthVal,
-  profitGrowthVal,
-  ebitdaGrowthVal,
-  assetGrowthVal,
-  debtGrowthVal,
-  roeVal,
-  roceVal,
-  ebitdaMarginVal,
-  peVal,
-  peerAvgPeVal,
-  capacityHighlight,
-  anchorAllocationVal,
-}) => {
-  const postPromoterNum = postPromoter ? parseFloat(postPromoter) : 80.0;
-  const promoterVerdict = evaluateVerdict(postPromoterNum, 67.0, 50.0);
+const CATEGORY_SUMMARY_MAP = [
+  { label: "Issue Structure", match: "Issue Structure", strong: "Fresh-Issue Led", weak: "OFS Dominated", mixed: "Mixed Fresh + OFS" },
+  { label: "Promoter Selling", match: "Promoter Participation in OFS", strong: "No Promoter Sale", weak: "Promoter Sale", mixed: "Promoter Sale" },
+  { label: "Promoter Holding", match: "Promoter Holding Post-Issue", strong: "Strong", weak: "Low", mixed: "Monitorable" },
+  { label: "Use of Proceeds", match: "Use of Proceeds", strong: "No Debt Repayment", weak: "Debt Heavy", mixed: "Partly Debt Repayment" },
+  { label: "Working Capital Intensity", match: "Working Capital Intensity", strong: "Low", weak: "High", mixed: "Elevated" },
+  { label: "Top-Line Growth", match: "Growth (YoY)", strong: "Strong", weak: "Weak", mixed: "Moderate" },
+  { label: "Profit Growth", match: "Profit After Tax Growth", strong: "Strong", weak: "Weak", mixed: "Moderate" },
+  { label: "Margins", match: "PAT Margin", strong: "Healthy", weak: "Thin", mixed: "Thin" },
+  { label: "Return Ratios (ROE)", match: "Return on Equity", strong: "Strong", weak: "Weak", mixed: "High but Declining" },
+  { label: "Leverage", match: "Debt to Equity", strong: "Healthy", weak: "High Leverage", mixed: "Monitorable" },
+  { label: "Cash Flow Quality", match: "Operating Cash Flow", strong: "Cash Backed", weak: "Cash Negative", mixed: "Unverified" },
+  { label: "Valuation vs Peers", match: "P/E vs Recently Listed", strong: "At/Below Sector", weak: "Rich", mixed: "Above Sector Median" },
+  { label: "Institutional Demand", match: "Anchor Investor Participation", strong: "Strong", weak: "Weak", mixed: "Moderate" },
+  { label: "Bid Demand", match: "Subscription Demand", strong: "Strong", weak: "Weak", mixed: "Awaiting Bidding" },
+  { label: "Sector Reception", match: "Sector Listing Track Record", strong: "Positive", weak: "Negative", mixed: "Mixed" },
+];
 
-  const freshVerdict = freshIssueStr && (freshIssueStr.includes("100%") || freshIssueStr.includes("Fresh"))
-    ? "Pass"
-    : ofsStr && ofsStr.includes("OFS Only")
-    ? "Caution"
-    : "Pass";
+const buildCategorySummary = (parameters, overallRisk) => {
+  const rows = CATEGORY_SUMMARY_MAP.map(({ label, match, strong, weak, mixed }) => {
+    const p = parameters.find((x) => x.name.includes(match));
+    if (!p) return undefined;
+    if (p.verdict === VERDICT.PASS) return { category: label, status: strong, type: "strong", driver: p.name };
+    if (p.verdict === VERDICT.FAIL) return { category: label, status: weak, type: "weak", driver: p.name };
+    if (p.verdict === VERDICT.NOT_ASSESSED) return { category: label, status: "Not Assessed", type: "unknown", driver: p.name };
+    return { category: label, status: mixed, type: "mixed", driver: p.name };
+  }).filter(Boolean);
 
-  const salesVerdict = evaluateVerdict(salesGrowthVal, 22.0, 10.0);
-  const profitVerdict = evaluateVerdict(profitGrowthVal, 25.0, 10.0);
-  const ebitdaVerdict = evaluateVerdict(ebitdaGrowthVal, 25.0, 10.0);
-  const assetVerdict = evaluateVerdict(assetGrowthVal, 15.0, 5.0);
+  rows.push({
+    category: "Overall Risk Profile",
+    status: overallRisk,
+    type: overallRisk === "Low Risk" ? "strong" : overallRisk === "High Risk" ? "weak" : "mixed",
+    driver: "Derived from all parameter verdicts",
+  });
 
-  let debtVerdict = "Pass";
-  if (typeof debtGrowthVal === "number" && typeof assetGrowthVal === "number") {
-    if (debtGrowthVal < assetGrowthVal) debtVerdict = "Pass";
-    else if (debtGrowthVal <= assetGrowthVal * 1.2) debtVerdict = "Caution";
-    else debtVerdict = "Fail";
-  }
+  return rows;
+};
 
-  const marginVerdict = evaluateVerdict(ebitdaMarginVal, 15.0, 8.0);
-  const roeVerdict = evaluateVerdict(roeVal, 20.0, 10.0);
-  const roceVerdict = evaluateVerdict(roceVal, 25.0, 12.0);
+const buildHighlights = (d, flags) => flags.green.map((g) => g.label);
 
-  const effectivePeerPe = peerAvgPeVal || 35.0;
-  let peVerdict = "Pass";
-  if (typeof peVal === "number") {
-    if (peVal <= effectivePeerPe) peVerdict = "Pass";
-    else if (peVal <= effectivePeerPe * 1.25) peVerdict = "Caution";
-    else peVerdict = "Fail";
-  }
+const buildClosingSummary = (d, scoring) => {
+  const f = d.financials || {};
+  const bits = [
+    `${d.name} scores ${scoring.aiScore}/100 on ${scoring.scoredCount} scored parameters (${scoring.counts.pass} Pass, ${scoring.counts.caution} Caution, ${scoring.counts.fail} Fail, ${scoring.counts.notAssessed} Not Assessed).`,
+    typeof f.totalIncomeGrowth === "number"
+      ? `${f.totalIncomeSourceLabel || "Total Income"} growth ${f.totalIncomeGrowth}%`
+      : undefined,
+    typeof f.patGrowth === "number" ? `PAT growth ${f.patGrowth}%` : undefined,
+    typeof f.kpi?.patMargin?.latest === "number" ? `net margin ${f.kpi.patMargin.latest}%` : undefined,
+    typeof f.pePost === "number" ? `post-issue P/E ${f.pePost}x` : undefined,
+  ].filter(Boolean);
 
-  const anchorVerdict = evaluateVerdict(anchorAllocationVal || 38.5, 30.0, 20.0);
-  const gmpVerdict = evaluateVerdict(gmpPercent, 20.0, 5.0);
+  const metrics = bits.slice(1).join(", ");
+  const capNote = scoring.appliedCaps.length
+    ? ` The weighted score alone would read "${scoring.rawRating}"; the rating is capped at "${scoring.rating}" because ${scoring.appliedCaps.length} disqualifying condition${scoring.appliedCaps.length > 1 ? "s were" : " was"} triggered.`
+    : "";
 
-  const targetPrice = currentPrice ? currentPrice * 1.08 : 0;
-  const stopLoss = issuePrice ? issuePrice * 0.95 : 0;
-  const riskReward = (currentPrice && currentPrice > stopLoss)
-    ? Number(((targetPrice - currentPrice) / (currentPrice - stopLoss)).toFixed(1))
-    : 2.8;
+  return `${bits[0]}${metrics ? ` Key figures: ${metrics}.` : ""} Data coverage ${scoring.coveragePct}% (${scoring.confidence} confidence).${capNote}`;
+};
 
-  const rrVerdict = evaluateVerdict(riskReward, 2.5, 1.5);
+const toCardSummary = (d, marketTrend) => {
+  const { parameters, scoring, flags, risks } = analyseIpo(d, marketTrend);
+  const totalIssueCr = d.issueSplit?.totalCr ?? extractCr(d.details.totalIssueSize);
 
-  const rawParams = [
-    {
-      id: 1,
-      name: "Company Introduction",
-      category: "Governance & Moats",
-      benchmark: "Strong Market Position",
-      actual: companyName ? `${companyName} (${capacityHighlight || "Market Leader"})` : "Market Leader",
-      verdict: "Pass",
-    },
-    {
-      id: 2,
-      name: "Type of Issue",
-      category: "Governance & Moats",
-      benchmark: "Fresh Issue Preferred",
-      actual: freshIssueStr ? `${freshIssueStr} | ${ofsStr || "0% OFS"}` : "Fresh Issue Allocation",
-      verdict: freshVerdict,
-    },
-    {
-      id: 3,
-      name: "Promoter History",
-      category: "Governance & Moats",
-      benchmark: "Good Track Record",
-      actual: "Experienced management & promoter group",
-      verdict: "Pass",
-    },
-    {
-      id: 4,
-      name: "Promoter Holding",
-      category: "Governance & Moats",
-      benchmark: "Above 67%",
-      actual: postPromoter ? `${prePromoter || "100%"} → ${postPromoter} Post-IPO` : "Strong Promoter Commitment (>75%)",
-      verdict: promoterVerdict,
-    },
-    {
-      id: 5,
-      name: "Fund Utilization",
-      category: "Governance & Moats",
-      benchmark: "Expansion Preferred",
-      actual: "CapEx Expansion & Strategic Capital Allocation",
-      verdict: "Pass",
-    },
-    {
-      id: 6,
-      name: "Retail Reservation",
-      category: "Governance & Moats",
-      benchmark: "35%",
-      actual: "35% Retail Allocation",
-      verdict: "Pass",
-    },
-    {
-      id: 7,
-      name: "Sales Growth",
-      category: "Financials & Margins",
-      benchmark: "≥22%",
-      actual: typeof salesGrowthVal === "number" ? `${salesGrowthVal.toFixed(1)}% Revenue YoY Growth` : "Robust Revenue Expansion",
-      verdict: salesVerdict,
-    },
-    {
-      id: 8,
-      name: "Profit Growth",
-      category: "Financials & Margins",
-      benchmark: "≥25%",
-      actual: typeof profitGrowthVal === "number" ? `${profitGrowthVal.toFixed(1)}% Net Profit Growth` : "Healthy Net Profit Growth",
-      verdict: profitVerdict,
-    },
-    {
-      id: 9,
-      name: "EBITDA Growth",
-      category: "Financials & Margins",
-      benchmark: "≥25%",
-      actual: typeof ebitdaGrowthVal === "number" ? `${ebitdaGrowthVal.toFixed(1)}% EBITDA Growth` : "Strong Operating Trajectory",
-      verdict: ebitdaVerdict,
-    },
-    {
-      id: 10,
-      name: "Asset Growth",
-      category: "Financials & Margins",
-      benchmark: "≥15%",
-      actual: typeof assetGrowthVal === "number" ? `${assetGrowthVal.toFixed(1)}% Total Asset Expansion` : "Expansion of Infrastructure",
-      verdict: assetVerdict,
-    },
-    {
-      id: 11,
-      name: "Debt Growth",
-      category: "Financials & Margins",
-      benchmark: "Debt < Asset Growth",
-      actual: (typeof debtGrowthVal === "number" && typeof assetGrowthVal === "number")
-        ? `Debt +${debtGrowthVal.toFixed(1)}% vs Asset +${assetGrowthVal.toFixed(1)}%`
-        : "Controlled Borrowing Structure",
-      verdict: debtVerdict,
-    },
-    {
-      id: 12,
-      name: "Operating Profit Margin",
-      category: "Financials & Margins",
-      benchmark: "Improving",
-      actual: typeof ebitdaMarginVal === "number" ? `EBITDA Margin ~${ebitdaMarginVal.toFixed(2)}%` : "Solid Margin Efficiency",
-      verdict: marginVerdict,
-    },
-    {
-      id: 13,
-      name: "ROE (Return on Net Worth)",
-      category: "Financials & Margins",
-      benchmark: "≥20%",
-      actual: typeof roeVal === "number" ? `${roeVal.toFixed(2)}% RoNW` : "Attractive Return Profile",
-      verdict: roeVerdict,
-    },
-    {
-      id: 14,
-      name: "ROCE",
-      category: "Financials & Margins",
-      benchmark: "≥25%",
-      actual: typeof roceVal === "number" ? `${roceVal.toFixed(2)}% Operating EBIT ROCE` : "High Capital Efficiency",
-      verdict: roceVerdict,
-    },
-    {
-      id: 15,
-      name: "PE Ratio vs Peers",
-      category: "Valuation & Pricing",
-      benchmark: "Lower than Peer Avg",
-      actual: typeof peVal === "number" ? `${peVal.toFixed(1)}x P/E vs ${effectivePeerPe.toFixed(1)}x Peer Avg` : "Valuation In-Line with Peers",
-      verdict: peVerdict,
-    },
-    {
-      id: 16,
-      name: "Anchor Lock-in",
-      category: "Institutional Demand",
-      benchmark: ">30% of QIB",
-      actual: anchorAllocationVal ? `${anchorAllocationVal}% Anchor Allocation` : "Strong Anchor Demand (38.5%)",
-      verdict: anchorVerdict,
-    },
-    {
-      id: 17,
-      name: "Moat & Market Leadership",
-      category: "Governance & Moats",
-      benchmark: "Top 3 Position",
-      actual: "Top 3 Market Position in Sector",
-      verdict: "Pass",
-    },
-    {
-      id: 18,
-      name: "GMP Demand",
-      category: "Institutional Demand",
-      benchmark: ">20%",
-      actual: typeof gmpPercent === "number" ? `+${gmpPercent.toFixed(1)}% Live GMP` : "Active Grey Market Interest",
-      verdict: gmpVerdict,
-    },
-    {
-      id: 19,
-      name: "Risk Reward Protection",
-      category: "Valuation & Pricing",
-      benchmark: "> 2.5:1",
-      actual: `${riskReward}:1 Risk/Reward Protection Ratio`,
-      verdict: rrVerdict,
-    },
-    {
-      id: 20,
-      name: "Overall AI Verdict Score",
-      category: "Institutional Demand",
-      benchmark: "≥75/100",
-      actual: "Computed Post Diagnostic",
-      verdict: "Pending",
-    },
-  ];
+  return {
+    id: d.id,
+    name: d.name,
+    symbol: d.id,
+    logoUrl: d.logoUrl,
+    category: d.category,
+    sector: d.sector,
+    status: d.status,
+    allotmentStatusUrl: d.allotmentStatusUrl,
+    sourceUrl: d.sourceUrl,
+    issuePrice: d.issuePrice,
+    lotSize: parseInt((d.details.lotSize || "").replace(/[^0-9]/g, ""), 10) || undefined,
+    issueSize: totalIssueCr ? `₹${totalIssueCr.toLocaleString("en-IN")} Cr` : d.details.totalIssueSize,
+    issueSplit: d.issueSplit,
+    openDate: d.dates.openDate,
+    closeDate: d.dates.closeDate,
+    listingDate: d.dates.listingDate,
+    allotmentDate: d.dates.allotmentDate,
+    reservation: d.reservation,
+    subscription: d.subscription,
+    brokerRecommendation: d.brokerRecommendation,
 
-  const passedCount = rawParams.filter((p) => p.verdict === "Pass").length;
+    aiScore: scoring.aiScore,
+    rating: scoring.rating,
+    rawRating: scoring.rawRating,
+    confidence: scoring.confidence,
+    coveragePct: scoring.coveragePct,
+    verdictCounts: scoring.counts,
+    aiVerdict: `${d.name} scores ${scoring.aiScore}/100 across ${scoring.scoredCount} weighted parameters sourced live from Chittorgarh (${scoring.counts.pass} Pass · ${scoring.counts.caution} Caution · ${scoring.counts.fail} Fail · ${scoring.counts.notAssessed} Not Assessed). Rating: ${scoring.rating}.`,
 
-  const computedAiScore = Math.min(
-    99,
-    Math.max(45, Math.round(45 + passedCount * 2.5 + (typeof gmpPercent === "number" && gmpPercent > 0 ? gmpPercent * 0.25 : 5)))
+    parameters,
+    // Legacy key kept so existing clients keep rendering; it is the same array.
+    parameters20: parameters,
+    passedCount: scoring.passedCount,
+    parameterCount: parameters.length,
+
+    swot: {
+      strengths: flags.green.map((g) => g.label).slice(0, 4),
+      risks: risks.filter((r) => r.severity !== "Low Risk").map((r) => r.description).slice(0, 3),
+    },
+  };
+};
+
+const getIpoAnalysis = asyncHandler(async (req, res) => {
+  const category = ["MAINBOARD", "SME"].includes((req.query.category || "").toUpperCase())
+    ? req.query.category.toUpperCase()
+    : undefined;
+
+  const [liveList, marketTrend] = await Promise.all([fetchLiveIpoListFromChittorgarh(category), getMarketTrendText()]);
+  const ipoResults = liveList.map((d) => toCardSummary(d, marketTrend));
+
+  const brokerBacked = ipoResults.filter((i) => i.brokerRecommendation);
+  const avgSubscribeRatio =
+    brokerBacked.length > 0
+      ? Number(
+          (
+            brokerBacked.reduce((acc, i) => {
+              const { subscribe, mayApply, neutral, avoid } = i.brokerRecommendation;
+              const total = subscribe + mayApply + neutral + avoid;
+              return acc + (total > 0 ? (subscribe / total) * 100 : 0);
+            }, 0) / brokerBacked.length
+          ).toFixed(1),
+        )
+      : undefined;
+
+  res.status(200).json(
+    new ApiResponse(200, "IPO analysis fetched from Chittorgarh.", {
+      summary: {
+        activeIposCount: ipoResults.length,
+        avgBrokerSubscribeRatio: avgSubscribeRatio,
+        topPick: ipoResults.slice().sort((a, b) => b.aiScore - a.aiScore)[0]?.name,
+        marketSentiment:
+          avgSubscribeRatio === undefined ? "N/A" : avgSubscribeRatio >= 60 ? "BULLISH" : avgSubscribeRatio >= 40 ? "MODERATE" : "CAUTIOUS",
+        marketTrend: marketTrend?.text,
+        dataSource: "Chittorgarh IPO pages, scraped live per request",
+      },
+      ipos: ipoResults,
+    }),
   );
+});
 
-  const aiScoreVerdict = evaluateVerdict(computedAiScore, 75.0, 60.0);
-  rawParams[19].actual = `${computedAiScore}/100 Composite Evaluated Score`;
-  rawParams[19].verdict = aiScoreVerdict;
+const getDeepIpoAnalysis = asyncHandler(async (req, res) => {
+  const { symbol: id } = req.params;
+  if (!id) throw new ApiError(400, "IPO id is required.");
 
-  const finalPassedCount = rawParams.filter((p) => p.verdict === "Pass").length;
+  let d;
+  try {
+    d = await fetchChittorgarhIpoDetails(id);
+  } catch (err) {
+    throw new ApiError(404, `Could not find IPO "${id}" on Chittorgarh: ${err.message}`);
+  }
 
-  const params = rawParams.map((p) => ({
-    ...p,
-    value: p.actual,
-    status: p.verdict === "Pass" ? "PASS" : p.verdict === "Caution" ? "WARN" : "FAIL",
-    explanation: `Actual metric: ${p.actual} (Benchmark: ${p.benchmark})`,
+  const marketTrend = await getMarketTrendText();
+  const { parameters, scoring, flags, risks, resultGuide } = analyseIpo(d, marketTrend);
+  const { financials } = d;
+
+  const financialCards = (financials.periods || []).map((period, idx) => ({
+    period,
+    totalIncome: financials.incomeSeries?.[idx],
+    pat: financials.patSeries?.[idx],
+    operatingProfit: financials.operatingProfitSeries?.[idx],
+    netWorth: financials.netWorthSeries?.[idx],
+    assets: financials.assetsSeries?.[idx],
+    borrowing: financials.borrowingSeries?.[idx],
   }));
 
-  return { params, passedCount: finalPassedCount, aiScore: computedAiScore };
-};
+  res.status(200).json(
+    new ApiResponse(200, "Deep IPO analysis fetched from Chittorgarh.", {
+      company: {
+        name: d.name,
+        symbol: d.id,
+        category: d.category,
+        sector: d.sector,
+        status: d.status,
+        logoUrl: d.logoUrl,
+        sourceUrl: d.sourceUrl,
+        allotmentStatusUrl: d.allotmentStatusUrl,
+        about: d.about,
+        details: d.details,
+        dates: d.dates,
+        lotBreakup: d.lotBreakup,
+        reservation: d.reservation,
+        anchor: d.anchor,
+        objectsOfIssue: d.objectsOfIssue,
+        ofsShareholders: d.ofsShareholders,
+        expenses: d.expenses,
+        brokerRecommendation: d.brokerRecommendation,
+        subscription: d.subscription,
+        sectorPeers: d.sectorPeers,
+        issueSplit: d.issueSplit,
 
-const getIpoAnalysis = async (req, res) => {
-  try {
-    let liveScrapedList = await fetchLiveIpoListFromChittorgarh();
+        financials,
+        financialCards,
+        // Notes about how the source labels its own data, surfaced verbatim so the
+        // UI can disclose them next to the figures.
+        dataNotes: d.dataNotes,
 
-    if (!liveScrapedList || liveScrapedList.length === 0) {
-      const fallbackSymbols = ["HYUNDAI", "NTPCGREEN", "WAAREE", "SWIGGY", "AFCONS"];
-      liveScrapedList = fallbackSymbols.map((sym) => ({
-        symbol: sym,
-        name: `${sym} India Limited`,
-        openDate: "Active",
-        closeDate: "Active",
-        issuePriceStr: "₹400 - ₹500",
-        issueSize: "₹5,000 Cr",
-      }));
-    }
+        highlights: buildHighlights(d, flags),
+        // Three buckets. An OFS component lives in `neutral`, never in `green`.
+        flags,
 
-    const ipoResults = liveScrapedList.map((ipo) => {
-      const issuePrice = parseInt((ipo.issuePriceStr || "200").replace(/[^0-9]/g, "")) || 200;
-      const currentPrice = Math.round(issuePrice * 1.15);
-      const gmpAmount = Math.max(20, Math.round(currentPrice - issuePrice));
-      const gmpPercent = Number(((gmpAmount / issuePrice) * 100).toFixed(1));
-
-      const { params: parameters20, passedCount, aiScore } = generate20Parameters({
-        companyName: ipo.name,
-        issuePrice,
-        currentPrice,
-        gmpPercent,
-        freshIssueStr: ipo.freshIssue,
-        ofsStr: ipo.ofs,
-      });
-
-      const rating = calculateAiRating(aiScore);
-      const issueSizeText = ipo.issueSize || "₹2,500 Cr";
-      const aiVerdictText = `Based on 20-Point Framework analysis, ${ipo.name} scores ${aiScore}/100 with ${passedCount}/20 parameters passed. Business moat, Grey Market Premium (+${gmpPercent}%), and institutional anchor demand support a rating of "${rating}".`;
-
-      return {
-        id: `ipo-${ipo.symbol}-${Math.random().toString(36).substring(2, 7)}`,
-        name: ipo.name,
-        symbol: ipo.symbol,
-        logoUrl: `https://logo.clearbit.com/${ipo.symbol.toLowerCase()}.com`,
-        category: ipo.category || "MAINBOARD",
-        issuePrice,
-        currentPrice: Number(currentPrice.toFixed(2)),
-        lotSize: Math.max(1, Math.round(15000 / issuePrice)),
-        issueSize: issueSizeText,
-        openDate: ipo.openDate || "Active",
-        closeDate: ipo.closeDate || "Active",
-        listingDate: "T+5 Days",
-        gmp: gmpAmount,
-        gmpPercent,
-        subscription: {
-          qib: Number((gmpPercent * 0.4).toFixed(2)),
-          nii: Number((gmpPercent * 0.25).toFixed(2)),
-          retail: Number((gmpPercent * 0.15).toFixed(2)),
-          total: Number((gmpPercent * 0.35).toFixed(2)),
+        riskFactorAnalysis: {
+          overallRating: scoring.overallRisk,
+          risks,
         },
-        aiScore,
-        rating,
-        aiVerdict: aiVerdictText,
-        whyApply: aiVerdictText,
-        listingTarget: Number((currentPrice * 1.08).toFixed(1)),
-        stopLoss: Number((issuePrice * 0.96).toFixed(1)),
-        parameters20,
-        passedCount,
-        swot: {
-          strengths: [
-            `Evaluated ${passedCount}/20 Diagnostic Parameters Passed (${rating})`,
-            `Estimated Grey Market Premium (+${gmpPercent}%)`,
-          ],
-          risks: [`Market volatility post-listing`],
-        },
-      };
-    });
 
-    const avgGmp = Number(
-      (ipoResults.reduce((acc, item) => acc + item.gmpPercent, 0) / ipoResults.length).toFixed(1)
-    );
-
-    res.json({
-      success: true,
-      data: {
-        summary: {
-          activeIposCount: ipoResults.length,
-          avgGmpPercent: avgGmp,
-          topPick: ipoResults[0]?.name || "Hyundai Motor India Limited",
-          marketSentiment: avgGmp >= 15 ? "BULLISH" : "MODERATE",
+        finalObservations: {
+          positives: flags.green.map((g) => g.label),
+          watchItems: flags.neutral.map((g) => g.label),
+          concerns: flags.red.map((g) => g.label),
+          closingSummary: buildClosingSummary(d, scoring),
+          closingRating: scoring.rating,
         },
-        ipos: ipoResults,
+
+        finalDashboard: {
+          // Counts come straight from the parameter verdicts, so they always add up
+          // to the number of parameters shown in the table.
+          counts: {
+            greenFlags: scoring.counts.pass,
+            yellowFlags: scoring.counts.caution,
+            redFlags: scoring.counts.fail,
+            notAssessed: scoring.counts.notAssessed,
+            informational: scoring.counts.info,
+            totalParameters: parameters.length,
+          },
+          categorySummary: buildCategorySummary(parameters, scoring.overallRisk),
+        },
       },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+
+      metrics: {
+        aiScore: scoring.aiScore,
+        rating: scoring.rating,
+        rawRating: scoring.rawRating,
+        passedCount: scoring.passedCount,
+        parameterCount: parameters.length,
+        scoredCount: scoring.scoredCount,
+        weightEarned: scoring.weightEarned,
+        weightTotal: scoring.weightTotal,
+        coveragePct: scoring.coveragePct,
+        confidence: scoring.confidence,
+        overallRisk: scoring.overallRisk,
+        verdictCounts: scoring.counts,
+        appliedCaps: scoring.appliedCaps,
+      },
+
+      // Everything the reader needs to interpret the numbers above.
+      resultGuide,
+
+      parameters,
+      // Legacy alias.
+      parameters20: parameters,
+    }),
+  );
+});
+
+const isApplyRating = (rating) => rating === "STRONG APPLY" || rating === "APPLY FOR LISTING GAIN" || rating === "APPLY LONG TERM";
+
+const compareAiVsReal = (rating, currentGainPct) => {
+  if (typeof currentGainPct !== "number") return "Not enough data";
+  if (rating === "APPLY WITH CAUTION") return "Hedged Call";
+  const aiSaidApply = isApplyRating(rating);
+  const actuallyGained = currentGainPct > 0;
+  if (aiSaidApply === actuallyGained) return "Correct Call";
+  return aiSaidApply ? "Overestimated" : "Missed Opportunity";
 };
 
-const getStockAnalysis = async (req, res) => {
-  try {
-    const { symbol } = req.params;
-    const cleanSym = symbol ? symbol.toUpperCase().trim() : "RELIANCE";
+const getIpoTrackRecord = asyncHandler(async (req, res) => {
+  const category = ["MAINBOARD", "SME"].includes((req.query.category || "").toUpperCase())
+    ? req.query.category.toUpperCase()
+    : undefined;
 
-    let quote = null;
-    try {
-      quote = await getQuote(cleanSym);
-    } catch (e) {
-      // Fallback for unlisted IPOs like Dhaval Packaging Ltd.
-      const ipoDetails = await fetchChittorgarhIpoDetails(cleanSym);
-      const estPrice = parseInt((ipoDetails.details?.priceBand || "100").replace(/[^0-9]/g, "")) || 100;
-      
-      return res.json({
-        success: true,
-        data: {
-          symbol: ipoDetails.name || cleanSym,
-          currentPrice: estPrice,
-          percentChange: 5.0,
-          momentumScore: 78,
-          momentumGrade: "BULLISH",
-          aiSignal: "IPO ACCUMULATION",
-          technicalIndicators: {
-            rsi: 62.5,
-            macd: "BULLISH CROSSOVER",
-            sma20: Number((estPrice * 0.98).toFixed(2)),
-            sma50: Number((estPrice * 0.95).toFixed(2)),
-            ema20: Number((estPrice * 0.99).toFixed(2)),
-            volumeMultiplier: "2.4x Average Volume",
-          },
-          levels: {
-            support1: Number((estPrice * 0.95).toFixed(2)),
-            support2: Number((estPrice * 0.90).toFixed(2)),
-            resistance1: Number((estPrice * 1.15).toFixed(2)),
-            resistance2: Number((estPrice * 1.25).toFixed(2)),
-            targetPrice: Number((estPrice * 1.20).toFixed(2)),
-            stopLoss: Number((estPrice * 0.92).toFixed(2)),
-          },
-          insights: [
-            `Analysis generated for ${ipoDetails.name} (${cleanSym}).`,
-            `Issue Size: ${ipoDetails.details?.totalIssueSize || "Prospectus Filed"}. Valuation: ${ipoDetails.details?.priceBand || "Price Band Active"}.`,
-          ],
-        },
-      });
+  const [records, marketTrend] = await Promise.all([fetchListedIpoTrackRecord(category), getMarketTrendText()]);
+
+  const results = records.map((r) => {
+    if (!r.aiAvailable || !r.detail) {
+      return {
+        name: r.name,
+        category: r.category,
+        listingGainPct: r.listingGainPct,
+        currentGainPct: r.currentGainPct,
+        aiAvailable: false,
+      };
     }
 
-    const currentPrice = quote.currentPrice;
-    const percentChange = quote.percentChange ?? 0;
-    const high = quote.high || currentPrice * 1.02;
-    const low = quote.low || currentPrice * 0.98;
-    const prevClose = quote.prevClose || currentPrice;
+    const d = r.detail;
+    const { scoring } = analyseIpo(d, marketTrend);
 
-    const momentumScore = Math.min(99, Math.max(35, Math.round(50 + percentChange * 5)));
-    let momentumGrade = "NEUTRAL";
-    if (momentumScore >= 80) momentumGrade = "STRONG BULLISH";
-    else if (momentumScore >= 65) momentumGrade = "BULLISH";
-    else if (momentumScore <= 40) momentumGrade = "BEARISH";
+    return {
+      id: d.id,
+      name: d.name,
+      logoUrl: d.logoUrl,
+      category: d.category,
+      sector: d.sector,
+      sourceUrl: d.sourceUrl,
+      listingGainPct: r.listingGainPct,
+      currentGainPct: r.currentGainPct,
+      aiAvailable: true,
+      aiScore: scoring.aiScore,
+      passedCount: scoring.passedCount,
+      parameterCount: scoring.scoredCount,
+      confidence: scoring.confidence,
+      rating: scoring.rating,
+      comparison: compareAiVsReal(scoring.rating, r.currentGainPct),
+    };
+  });
 
-    let aiSignal = "NEUTRAL CONSOLIDATION";
-    if (percentChange > 2) aiSignal = "BULLISH BREAKOUT";
-    else if (percentChange < -2) aiSignal = "BEARISH BREAKDOWN";
+  const withAi = results.filter((r) => r.aiAvailable);
+  // Only directional calls count towards accuracy; hedged and no-data rows are excluded
+  // from the denominator so the percentage means what it says.
+  const directional = withAi.filter((r) => r.comparison === "Correct Call" || r.comparison === "Overestimated" || r.comparison === "Missed Opportunity");
+  const correctCalls = directional.filter((r) => r.comparison === "Correct Call").length;
 
-    const calculatedRsi = Number((50 + percentChange * 3).toFixed(1));
-    const sma20 = Number((prevClose * 0.985).toFixed(2));
-    const sma50 = Number((prevClose * 0.95).toFixed(2));
+  res.status(200).json(
+    new ApiResponse(200, "Listed IPO track record fetched from Chittorgarh.", {
+      summary: {
+        totalTracked: results.length,
+        aiEvaluated: withAi.length,
+        directionalCalls: directional.length,
+        hedgedCalls: withAi.filter((r) => r.comparison === "Hedged Call").length,
+        accuracyPct: directional.length > 0 ? Number(((correctCalls / directional.length) * 100).toFixed(1)) : undefined,
+        accuracyBasis:
+          "Share of directional Apply/Avoid calls whose direction matched the stock's current gain or loss versus its issue price. Hedged 'Apply with Caution' ratings are excluded.",
+      },
+      ipos: results,
+    }),
+  );
+});
 
-    const analysis = {
+const TECHNICAL_METHODOLOGY = {
+  summary:
+    "Every indicator below is computed from up to two years of real daily OHLC candles for this stock. Nothing is approximated from today's percentage move, and any indicator without enough history is reported as unavailable rather than estimated.",
+  indicators: [
+    {
+      name: "RSI (14)",
+      how: "Wilder's Relative Strength Index over 14 daily closes, using Wilder smoothing.",
+      read: "Above 70 is conventionally overbought, below 30 oversold. In a strong trend RSI can stay stretched for a long time, so it is a warning about pace, not a reversal signal on its own.",
+    },
+    {
+      name: "MACD (12, 26, 9)",
+      how: "EMA(12) minus EMA(26), with a 9-period EMA of that line as the signal. The histogram is the gap between them, and a crossover is a genuine sign change in the histogram — located by scanning the actual series.",
+      read: "The MACD line above its signal line indicates upward momentum. The bars-since-crossover figure tells you how old that signal is; a fresh cross carries more information than one from months ago.",
+    },
+    {
+      name: "Moving averages (20, 50, 200)",
+      how: "Simple moving averages of the daily close, plus a 20-period exponential average.",
+      read: "Price above a rising 50-day and 200-day average is the classic definition of an uptrend. The 200-day needs 200 trading days of history, so recently listed stocks will not have one.",
+    },
+    {
+      name: "ATR (14)",
+      how: "Average True Range, Wilder-smoothed, expressed in rupees and as a percentage of price.",
+      read: "How far this stock typically moves in a day. It sizes positions and stop distances — a 5% ATR stock needs far more room than a 1% ATR one.",
+    },
+    {
+      name: "Bollinger Bands (20, 2)",
+      how: "20-day simple moving average plus and minus two standard deviations of the close.",
+      read: "Bandwidth measures how volatile the recent range has been. Price outside a band is an extreme relative to recent history, not a signal by itself.",
+    },
+    {
+      name: "Support and resistance",
+      how: "Swing pivots found by a fractal test — a candle whose high or low is the extreme of the seven candles centred on it — then clustered when they sit within about 1% of each other.",
+      read: "The touch count matters: a level tested several times is more meaningful than a single wick. Where no pivot exists above or below the current price, the level is left blank rather than invented.",
+    },
+    {
+      name: "Relative volume",
+      how: "Latest session volume divided by the 20-day average volume.",
+      read: "Above 2x means unusual participation, which makes a price move more significant. Low volume moves are easier to reverse.",
+    },
+  ],
+  limitations: [
+    "Technical indicators describe what price has already done. They do not predict what it will do next.",
+    "No price target is published here. A target would require assumptions about the future that this data cannot support.",
+    "The ATR stop reference is a volatility measurement, not a recommendation — it shows how far two average daily ranges sit below the current price, nothing more.",
+    "Indicators are computed on daily candles only, and are not adjusted for corporate actions beyond what the data provider supplies.",
+    "This is information, not investment advice. Consult a SEBI-registered adviser before trading.",
+  ],
+};
+
+
+const buildTechnicalSignals = (t, percentChange) => {
+  const list = [];
+  const add = (name, direction, weight, detail) => list.push({ name, direction, weight, detail });
+
+  const price = t.currentPrice;
+
+  // Trend: price relative to its own moving averages.
+  if (t.sma50 !== null && price !== null) {
+    const above = price > t.sma50;
+    add(
+      "Price vs 50-day average",
+      above ? "BULLISH" : "BEARISH",
+      2,
+      `₹${price} is ${above ? "above" : "below"} the 50-day average of ₹${t.sma50}.`,
+    );
+  }
+  if (t.sma200 !== null && price !== null) {
+    const above = price > t.sma200;
+    add(
+      "Price vs 200-day average",
+      above ? "BULLISH" : "BEARISH",
+      3,
+      `₹${price} is ${above ? "above" : "below"} the 200-day average of ₹${t.sma200}, the conventional dividing line between a long-term uptrend and downtrend.`,
+    );
+  }
+  if (t.sma50 !== null && t.sma200 !== null) {
+    const golden = t.sma50 > t.sma200;
+    add(
+      "50-day vs 200-day average",
+      golden ? "BULLISH" : "BEARISH",
+      2,
+      golden
+        ? `The 50-day average (₹${t.sma50}) sits above the 200-day (₹${t.sma200}) — a golden-cross configuration.`
+        : `The 50-day average (₹${t.sma50}) sits below the 200-day (₹${t.sma200}) — a death-cross configuration.`,
+    );
+  }
+
+  // Momentum.
+  let rsiZone = null;
+  if (t.rsi14 !== null) {
+    let direction = "NEUTRAL";
+    if (t.rsi14 >= 70) {
+      rsiZone = "OVERBOUGHT";
+      direction = "BEARISH";
+    } else if (t.rsi14 <= 30) {
+      rsiZone = "OVERSOLD";
+      direction = "BULLISH";
+    } else if (t.rsi14 >= 55) {
+      rsiZone = "BULLISH";
+      direction = "BULLISH";
+    } else if (t.rsi14 <= 45) {
+      rsiZone = "BEARISH";
+      direction = "BEARISH";
+    } else {
+      rsiZone = "NEUTRAL";
+    }
+    add(
+      "RSI (14)",
+      direction,
+      2,
+      `RSI is ${t.rsi14} (${rsiZone.toLowerCase()})${t.rsiReliability === "limited" ? ", computed on limited history so it has not fully settled" : ""}.`,
+    );
+  }
+
+  if (t.macd) {
+    const bullish = t.macd.position === "ABOVE_SIGNAL";
+    add(
+      "MACD (12, 26, 9)",
+      bullish ? "BULLISH" : "BEARISH",
+      2,
+      `MACD ${t.macd.macd} is ${bullish ? "above" : "below"} its signal line ${t.macd.signal} (histogram ${t.macd.histogram})${
+        t.macd.crossover ? `. Last crossover was ${t.macd.crossover.toLowerCase()}, ${t.macd.barsSinceCrossover} sessions ago` : ""
+      }.`,
+    );
+  }
+
+  if (t.relativeVolume !== null) {
+    const heavy = t.relativeVolume >= 1.5;
+    add(
+      "Relative volume",
+      heavy ? (percentChange >= 0 ? "BULLISH" : "BEARISH") : "NEUTRAL",
+      1,
+      `Latest volume is ${t.relativeVolume}x the 20-day average${heavy ? ", unusually heavy participation" : ""}.`,
+    );
+  }
+
+  if (t.pctFrom52High !== null && t.pctFrom52Low !== null) {
+    const nearHigh = t.pctFrom52High >= -5;
+    const nearLow = t.pctFrom52Low <= 10;
+    add(
+      "52-week range position",
+      nearHigh ? "BULLISH" : nearLow ? "BEARISH" : "NEUTRAL",
+      1,
+      `${Math.abs(t.pctFrom52High)}% ${t.pctFrom52High >= 0 ? "above" : "below"} the 52-week high of ₹${t.high52}, and ${t.pctFrom52Low}% above the 52-week low of ₹${t.low52}.`,
+    );
+  }
+
+  const weightTotal = list.reduce((s, x) => s + x.weight, 0);
+  const bullWeight = list.filter((x) => x.direction === "BULLISH").reduce((s, x) => s + x.weight, 0);
+  const bearWeight = list.filter((x) => x.direction === "BEARISH").reduce((s, x) => s + x.weight, 0);
+
+  const score =
+    weightTotal > 0 ? Math.round(50 + ((bullWeight - bearWeight) / weightTotal) * 50) : 50;
+
+  let grade = "NEUTRAL";
+  if (score >= 75) grade = "STRONG BULLISH";
+  else if (score >= 60) grade = "BULLISH";
+  else if (score <= 25) grade = "STRONG BEARISH";
+  else if (score <= 40) grade = "BEARISH";
+
+  const MAX_WEIGHT = 13;
+  const coverage = Math.min(100, Math.round((weightTotal / MAX_WEIGHT) * 100));
+  const confidence = coverage >= 90 ? "High" : coverage >= 60 ? "Medium" : "Low";
+
+  let trendSignal = "NO CLEAR TREND";
+  if (t.sma50 !== null && t.sma200 !== null && price !== null) {
+    if (price > t.sma50 && t.sma50 > t.sma200) trendSignal = "UPTREND";
+    else if (price < t.sma50 && t.sma50 < t.sma200) trendSignal = "DOWNTREND";
+    else trendSignal = "MIXED / TRANSITIONING";
+  } else if (t.sma50 !== null && price !== null) {
+    trendSignal = price > t.sma50 ? "ABOVE 50-DAY AVERAGE" : "BELOW 50-DAY AVERAGE";
+  }
+
+  const insights = [
+    `${bullWeight} of ${weightTotal} weighted signal points are bullish and ${bearWeight} bearish, giving a momentum score of ${score}/100 (${grade}).`,
+    trendSignal !== "NO CLEAR TREND"
+      ? `Trend structure reads as ${trendSignal.toLowerCase()} based on price against its 50-day and 200-day averages.`
+      : "There is not enough moving-average history to describe the trend structure.",
+    t.atrPct !== null
+      ? `Typical daily range is ${t.atrPct}% of price (ATR ₹${t.atr14}), which is the volatility any stop or position size has to accommodate.`
+      : "Average True Range could not be computed from the available history.",
+  ];
+
+  if (t.levels?.support1 && t.levels?.resistance1) {
+    insights.push(
+      `Nearest swing support is ₹${t.levels.support1} (${t.levels.support1Touches} touch${t.levels.support1Touches === 1 ? "" : "es"}) and nearest resistance ₹${t.levels.resistance1} (${t.levels.resistance1Touches} touch${t.levels.resistance1Touches === 1 ? "" : "es"}).`,
+    );
+  }
+
+  return { list, score, grade, confidence, coverage, rsiZone, trendSignal, insights };
+};
+
+const getStockAnalysis = asyncHandler(async (req, res) => {
+  const { symbol } = req.params;
+  const cleanSym = symbol ? symbol.toUpperCase().trim() : undefined;
+  if (!cleanSym) throw new ApiError(400, "Symbol is required.");
+
+  let quote;
+  let series;
+  try {
+    [quote, series] = await Promise.all([
+      getQuote(cleanSym),
+      getChartSeries(cleanSym, { range: "2y", interval: "1d", ttl: 900 }),
+    ]);
+  } catch {
+    throw new ApiError(404, `No market data found for "${cleanSym}". It may not be listed yet.`);
+  }
+
+  const currentPrice = quote.currentPrice;
+  const percentChange = quote.percentChange ?? 0;
+  const t = computeTechnicals(series.points, currentPrice);
+  const signals = buildTechnicalSignals(t, percentChange);
+
+  res.status(200).json(
+    new ApiResponse(200, "Stock analysis computed from daily price history.", {
       symbol: cleanSym,
+      name: series.name,
       currentPrice: Number(currentPrice.toFixed(2)),
       percentChange: Number(percentChange.toFixed(2)),
-      momentumScore,
-      momentumGrade,
-      aiSignal,
+
+      momentumScore: signals.score,
+      momentumGrade: signals.grade,
+      trendSignal: signals.trendSignal,
+      confidence: signals.confidence,
+
       technicalIndicators: {
-        rsi: Math.min(95, Math.max(10, calculatedRsi)),
-        macd: percentChange >= 0 ? "BULLISH CROSSOVER" : "BEARISH CROSSOVER",
-        sma20,
-        sma50,
-        ema20: Number((prevClose * 0.99).toFixed(2)),
-        volumeMultiplier: `${quote.volFactor}x Average Volume`,
+        rsi14: t.rsi14,
+        rsiZone: signals.rsiZone,
+        rsiReliability: t.rsiReliability,
+        macd: t.macd,
+        sma20: t.sma20,
+        sma50: t.sma50,
+        sma200: t.sma200,
+        ema20: t.ema20,
+        atr14: t.atr14,
+        atrPct: t.atrPct,
+        bollinger: t.bollinger,
+        relativeVolume: t.relativeVolume,
+        avgVolume20: t.avgVolume20,
+        latestVolume: t.latestVolume,
       },
+
       levels: {
-        support1: Number((low * 0.99).toFixed(2)),
-        support2: Number((low * 0.97).toFixed(2)),
-        resistance1: Number((high * 1.01).toFixed(2)),
-        resistance2: Number((high * 1.03).toFixed(2)),
-        targetPrice: Number((currentPrice * 1.08).toFixed(2)),
-        stopLoss: Number((currentPrice * 0.95).toFixed(2)),
+        support1: t.levels?.support1 ?? null,
+        support1Touches: t.levels?.support1Touches ?? null,
+        support2: t.levels?.support2 ?? null,
+        resistance1: t.levels?.resistance1 ?? null,
+        resistance1Touches: t.levels?.resistance1Touches ?? null,
+        resistance2: t.levels?.resistance2 ?? null,
+        high52: t.high52,
+        low52: t.low52,
+        pctFrom52High: t.pctFrom52High,
+        pctFrom52Low: t.pctFrom52Low,
+        atrStopReference:
+          t.atr14 && currentPrice ? Number((currentPrice - 2 * t.atr14).toFixed(2)) : null,
+        atrStopBasis: t.atr14 ? `2 × ATR(14) of ₹${t.atr14} below the current price` : null,
       },
-      insights: [
-        `Live market price for ${cleanSym} is ₹${currentPrice.toFixed(2)} (${percentChange >= 0 ? "+" : ""}${percentChange.toFixed(2)}%).`,
-        `Trading volume is running at ${quote.volFactor}x 10-day average.`,
-      ],
-    };
 
-    res.json({ success: true, data: analysis });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+      signals: signals.list,
+      insights: signals.insights,
 
-const getDeepIpoAnalysis = async (req, res) => {
-  try {
-    const { symbol } = req.params;
-    const cleanSym = symbol ? symbol.toUpperCase().trim() : "HYUNDAI";
-
-    const chittorgarhData = await fetchChittorgarhIpoDetails(cleanSym);
-
-    let liveQuote = null;
-    try {
-      liveQuote = await getQuoteSafe(cleanSym);
-    } catch (e) {
-      // ignore
-    }
-
-    const currentPrice = liveQuote?.currentPrice || 1960.0;
-    const issuePrice = liveQuote?.prevClose || 1960.0;
-    const percentChange = liveQuote?.percentChange || 0;
-
-    const gmpAmount = Math.max(20, Math.round(currentPrice - issuePrice || 20));
-    const gmpPercent = Number(((gmpAmount / (issuePrice || 1960)) * 100).toFixed(1));
-
-    const { params: parameters20, passedCount, aiScore } = generate20Parameters({
-      companyName: chittorgarhData.name,
-      issuePrice: issuePrice || 1960,
-      currentPrice: currentPrice || 1960,
-      gmpPercent,
-      freshIssueStr: chittorgarhData.details?.freshIssue,
-      ofsStr: chittorgarhData.details?.ofs,
-      prePromoter: chittorgarhData.details?.prePromoterHolding,
-      postPromoter: chittorgarhData.details?.postPromoterHolding,
-      salesGrowthVal: chittorgarhData.financials?.salesGrowth,
-      profitGrowthVal: chittorgarhData.financials?.profitGrowth,
-      ebitdaGrowthVal: chittorgarhData.financials?.ebitdaGrowth,
-      assetGrowthVal: chittorgarhData.financials?.assetGrowth,
-      debtGrowthVal: chittorgarhData.financials?.debtGrowth,
-      roeVal: chittorgarhData.financials?.roe,
-      roceVal: chittorgarhData.financials?.roce,
-      ebitdaMarginVal: chittorgarhData.financials?.ebitdaMargin,
-      peVal: chittorgarhData.financials?.pe,
-      peerAvgPeVal: chittorgarhData.financials?.peerAvgPe,
-      capacityHighlight: chittorgarhData.highlights?.capacity,
-    });
-
-    const rating = calculateAiRating(aiScore);
-
-    res.json({
-      success: true,
-      data: {
-        company: chittorgarhData,
-        metrics: {
-          currentPrice: Number(currentPrice.toFixed(2)),
-          percentChange: Number(percentChange.toFixed(2)),
-          gmpAmount: gmpAmount || 0,
-          gmpPercent,
-          aiScore,
-          rating,
-          passedCount,
-        },
-        parameters20,
+      dataQuality: {
+        candles: t.candles,
+        rangeRequested: "2y daily",
+        firstCandle: t.firstCandle,
+        lastCandle: t.lastCandle,
+        // Everything the series was too short to support, named explicitly.
+        unavailable: t.unavailable,
+        note:
+          t.unavailable.length > 0
+            ? "Indicators that need more history than this stock has are reported as unavailable rather than estimated."
+            : "Full daily history was available for every indicator shown.",
       },
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+
+      methodology: TECHNICAL_METHODOLOGY,
+    }),
+  );
+});
 
 module.exports = {
   getIpoAnalysis,
   getStockAnalysis,
   getDeepIpoAnalysis,
+  getIpoTrackRecord,
 };

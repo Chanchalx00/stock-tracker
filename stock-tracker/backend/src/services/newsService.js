@@ -127,7 +127,7 @@ const fetchNews = async (query, limit = 25) => {
         percentChange: quote?.percentChange ?? null,
         fiftyTwoWeekLow: quote?.fiftyTwoWeekLow ?? null,
         fiftyTwoWeekHigh: quote?.fiftyTwoWeekHigh ?? null,
-        volFactor: quote?.volFactor ?? 1.5,
+        volFactor: quote?.volFactor ?? null,
         publishedAt,
       };
     })

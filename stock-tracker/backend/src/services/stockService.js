@@ -60,11 +60,10 @@ const getQuote = async (symbol) => {
 
   const volume = meta.regularMarketVolume || 0;
   const avgVolume = meta.averageDailyVolume10Day || meta.averageDailyVolume3Month || 0;
-  const rawVolFactor = volume > 0 && avgVolume > 0 ? volume / avgVolume : 1 + Math.abs(pctChange) / 2;
-  const volFactor = +Math.max(1.0, rawVolFactor).toFixed(1);
+  const volFactor = volume > 0 && avgVolume > 0 ? +(volume / avgVolume).toFixed(1) : null;
 
-  const fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh ?? (currentPrice > 0 ? +(currentPrice * 1.18).toFixed(2) : null);
-  const fiftyTwoWeekLow = meta.fiftyTwoWeekLow ?? (currentPrice > 0 ? +(currentPrice * 0.82).toFixed(2) : null);
+  const fiftyTwoWeekHigh = meta.fiftyTwoWeekHigh ?? null;
+  const fiftyTwoWeekLow = meta.fiftyTwoWeekLow ?? null;
 
   const quote = {
     symbol: meta.symbol,
@@ -88,7 +87,7 @@ const getQuote = async (symbol) => {
 
 const SERIES_TTL = 60;
 
-const getChartSeries = async (symbol, { range = "1d", interval = "5m" } = {}) => {
+const getChartSeries = async (symbol, { range = "1d", interval = "5m", ttl = SERIES_TTL } = {}) => {
   const normalized = normalizeSymbol(symbol);
   const cacheKey = `series:${normalized}:${range}:${interval}`;
 
@@ -156,7 +155,7 @@ const getChartSeries = async (symbol, { range = "1d", interval = "5m" } = {}) =>
     points,
   };
 
-  await set(cacheKey, series, SERIES_TTL);
+  await set(cacheKey, series, ttl);
   return series;
 };
 
