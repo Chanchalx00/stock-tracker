@@ -40,7 +40,7 @@ const sendError = (res, statusCode, message, validationErrors = null) => {
   });
 };
 
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   const statusCode = err instanceof ApiError ? err.statusCode : 500;
 
   if (statusCode >= 500) {
@@ -69,7 +69,6 @@ const errorHandler = (err, req, res, next) => {
     );
   }
 
-  // Mongoose duplicate-key error
   if (err.code === 11000) {
     const field = Object.keys(err.keyPattern || { field: 1 })[0];
     return sendError(res, 409, `${field} already exists.`, [
@@ -77,7 +76,6 @@ const errorHandler = (err, req, res, next) => {
     ]);
   }
 
-  // Mongoose validation error
   if (err.name === "ValidationError") {
     const validationErrors = Object.values(err.errors || {}).map((e) => ({
       field: e.path,
@@ -86,12 +84,10 @@ const errorHandler = (err, req, res, next) => {
     return sendError(res, 400, "Validation failed.", validationErrors);
   }
 
-  // Mongoose invalid ObjectId / cast error
   if (err.name === "CastError") {
     return sendError(res, 400, `Invalid ${err.path}.`, null);
   }
 
-  // Never leak internal error details to clients
   return sendError(res, 500, "An internal server error occurred.", null);
 };
 

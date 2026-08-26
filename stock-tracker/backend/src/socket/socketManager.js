@@ -5,6 +5,7 @@ const { isAccessTokenBlacklisted } = require('../services/token.service');
 const logger = require('../utils/logger');
 
 let io;
+let newsTicker = null;
 
 const EMIT_INTERVAL_MS = 1_000;
 const intervals = new Map();
@@ -47,8 +48,10 @@ const enforcePerIpConnectionLimit = (socket, next) => {
   next();
 };
 
+const SYMBOL_PATTERN = /^\^?[A-Za-z0-9&-]{1,20}(\.[A-Za-z]{1,4})?$/;
+
 const isValidSymbol = (value) =>
-  typeof value === 'string' && value.length > 0 && value.length <= 10;
+  typeof value === 'string' && SYMBOL_PATTERN.test(value);
 
 const initSocket = (socketServer) => {
   io = socketServer;
@@ -56,8 +59,8 @@ const initSocket = (socketServer) => {
   io.use(enforcePerIpConnectionLimit);
   io.use(authenticateSocket);
 
-  // Live news broadcast ticker (every 30 seconds)
-  setInterval(async () => {
+  if (newsTicker) clearInterval(newsTicker);
+  newsTicker = setInterval(async () => {
     try {
       const newNews = await checkForNewMarketNews();
       if (newNews && newNews.length > 0 && io) {
@@ -65,15 +68,15 @@ const initSocket = (socketServer) => {
           io.emit('news:item', item);
         });
       }
-    } catch {
-      // background polling fail silent
+    } catch (err) {
+      logger.debug(`News ticker poll failed: ${err.message}`, { tag: 'SOCKET' });
     }
   }, 30_000);
+  newsTicker.unref();
 
   io.on('connection', (socket) => {
     logger.debug(`Socket connected: ${socket.id}`, { tag: 'SOCKET', userId: socket.data.userId });
 
-    // Lets broadcastAlert() below reach this specific user.
     socket.join(`user:${socket.data.userId}`);
 
     socket.on('subscribe', (symbols) => {
@@ -143,7 +146,9 @@ const startEmitting = (symbol) => {
   };
 
   emitPrice();
-  intervals.set(symbol, setInterval(emitPrice, EMIT_INTERVAL_MS));
+  const timer = setInterval(emitPrice, EMIT_INTERVAL_MS);
+  timer.unref();
+  intervals.set(symbol, timer);
 };
 
 const stopEmitting = (symbol) => {
@@ -153,7 +158,6 @@ const stopEmitting = (symbol) => {
     subscribers.delete(symbol);
   }
 };
-
 
 const broadcastAlert = (userId, alert) => {
   if (io) {

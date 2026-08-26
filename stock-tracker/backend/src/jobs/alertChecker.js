@@ -4,7 +4,15 @@ const { getQuote } = require('../services/stockService');
 const { broadcastAlert } = require('../socket/socketManager');
 const logger = require('../utils/logger');
 
+let isRunning = false;
+
 const checkAlerts = async () => {
+  if (isRunning) {
+    logger.debug('Previous sweep still running — skipping this tick.', { tag: 'ALERT_CHECKER' });
+    return;
+  }
+  isRunning = true;
+
   try {
     const activeAlerts = await Alert.find({ isTriggered: false });
     if (!activeAlerts.length) return;
@@ -17,8 +25,8 @@ const checkAlerts = async () => {
         try {
           const quote = await getQuote(symbol);
           quotes[symbol] = quote.currentPrice;
-        } catch {
-          // One symbol failing to quote shouldn't block checking the rest.
+        } catch (err) {
+          logger.debug(`Could not quote ${symbol} this sweep: ${err.message}`, { tag: 'ALERT_CHECKER' });
         }
       })
     );
@@ -32,14 +40,14 @@ const checkAlerts = async () => {
         (alert.condition === 'LESS_THAN' && price <= alert.targetPrice);
 
       if (triggered) {
-        const updated = await Alert.findByIdAndUpdate(
-          alert._id,
+        const updated = await Alert.findOneAndUpdate(
+          { _id: alert._id, isTriggered: false },
           {
             isTriggered: true,
             triggeredAt: new Date(),
             triggeredPrice: price,
           },
-          { new: true }
+          { returnDocument: 'after' }
         );
 
         if (updated) {
@@ -50,6 +58,8 @@ const checkAlerts = async () => {
     }
   } catch (error) {
     logger.error(`AlertChecker error: ${error.message}`, { tag: 'ALERT_CHECKER', stack: error.stack });
+  } finally {
+    isRunning = false;
   }
 };
 

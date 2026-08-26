@@ -12,6 +12,9 @@ const YAHOO_HEADERS = {
 };
 
 const normalizeSymbol = (symbol) => {
+  if (typeof symbol !== "string" || !symbol.trim()) {
+    throw new Error(`Invalid symbol: ${JSON.stringify(symbol)}`);
+  }
   const clean = symbol.toUpperCase().trim();
   if (clean.startsWith("^")) return clean;
   return /\.[A-Z]+$/.test(clean) ? clean : `${clean}.NS`;
@@ -87,9 +90,13 @@ const getQuote = async (symbol) => {
 
 const SERIES_TTL = 60;
 
+const YAHOO_RANGE_ALIASES = { "1m": "1mo", "3m": "3mo", "6m": "6mo" };
+const toYahooRange = (range) => YAHOO_RANGE_ALIASES[String(range).toLowerCase()] ?? range;
+
 const getChartSeries = async (symbol, { range = "1d", interval = "5m", ttl = SERIES_TTL } = {}) => {
   const normalized = normalizeSymbol(symbol);
-  const cacheKey = `series:${normalized}:${range}:${interval}`;
+  const yahooRange = toYahooRange(range);
+  const cacheKey = `series:${normalized}:${yahooRange}:${interval}`;
 
   const cached = await get(cacheKey);
   if (cached) return cached;
@@ -97,7 +104,7 @@ const getChartSeries = async (symbol, { range = "1d", interval = "5m", ttl = SER
   let data;
   try {
     ({ data } = await axios.get(`${YAHOO_CHART_URL}/${encodeURIComponent(normalized)}`, {
-      params: { interval, range },
+      params: { interval, range: yahooRange },
       headers: YAHOO_HEADERS,
       timeout: 8000,
     }));

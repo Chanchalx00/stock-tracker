@@ -24,7 +24,7 @@ const holdingSchema = new mongoose.Schema({
   buyPrice: {
     type: Number,
     required: true,
-    min: [0, 'Buy price must be positive'],
+    min: [0.01, 'Buy price must be greater than 0'],
   },
 }, { timestamps: true });
 

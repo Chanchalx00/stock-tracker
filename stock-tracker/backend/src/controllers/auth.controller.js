@@ -40,7 +40,6 @@ const sendAuthResponse = async (user, statusCode, res, message) => {
     .json(new ApiResponse(statusCode, message, null, { token: accessToken, user: publicUser(user) }));
 };
 
-// POST /api/auth/signup
 exports.signup = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -77,7 +76,6 @@ exports.signup = asyncHandler(async (req, res) => {
   await sendAuthResponse(user, 201, res, 'Account created successfully.');
 });
 
-// POST /api/auth/login
 exports.login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -86,6 +84,11 @@ exports.login = asyncHandler(async (req, res) => {
   }
 
   const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password');
+
+  if (user && !user.password && user.googleId) {
+    throw new ApiError(401, 'This account uses Google sign-in. Use "Continue with Google" instead.');
+  }
+
   if (!user || !(await user.comparePassword(password))) {
     throw new ApiError(401, 'Invalid credentials.');
   }
@@ -93,7 +96,6 @@ exports.login = asyncHandler(async (req, res) => {
   await sendAuthResponse(user, 200, res, 'Login successful.');
 });
 
-// POST /api/auth/google
 exports.googleLogin = asyncHandler(async (req, res) => {
   const { credential } = req.body;
 
@@ -147,7 +149,6 @@ exports.googleLogin = asyncHandler(async (req, res) => {
   await sendAuthResponse(user, 200, res, 'Login successful.');
 });
 
-// POST /api/auth/refresh
 exports.refresh = asyncHandler(async (req, res) => {
   const token = req.cookies?.refreshToken;
   if (!token) {
@@ -161,7 +162,6 @@ exports.refresh = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, 'Token refreshed.', null, { token: accessToken, user: publicUser(user) }));
 });
 
-// POST /api/auth/logout
 exports.logout = asyncHandler(async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
   if (refreshToken) {
@@ -177,9 +177,6 @@ exports.logout = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, 'Logged out successfully.'));
 });
 
-// POST /api/auth/forgot-password
-// Always responds with the same generic message whether or not the email
-// has an account — the response itself must never reveal that.
 exports.forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
 
@@ -199,8 +196,6 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
     try {
       await sendPasswordResetEmail(user.email, resetUrl);
     } catch (err) {
-      // Delivery failure shouldn't surface to the client — same generic
-      // response either way — but it must not fail silently server-side.
       logger.error(`Failed to send password reset email to ${user.email}: ${err.message}`, { tag: 'EMAIL' });
     }
   }
@@ -208,7 +203,6 @@ exports.forgotPassword = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, GENERIC_MESSAGE));
 });
 
-// POST /api/auth/reset-password
 exports.resetPassword = asyncHandler(async (req, res) => {
   const { token, password } = req.body;
 
@@ -227,14 +221,11 @@ exports.resetPassword = asyncHandler(async (req, res) => {
   user.password = password;
   await user.save();
 
-  // A password reset means every other session should be signed out —
-  // this device gets a fresh one below via sendAuthResponse.
   await revokeAllRefreshTokensForUser(user._id);
 
   await sendAuthResponse(user, 200, res, 'Password reset successful.');
 });
 
-// GET /api/auth/me
 exports.getMe = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, 'Current user fetched.', null, { user: publicUser(req.user) }));
 });

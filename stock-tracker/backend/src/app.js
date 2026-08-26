@@ -50,36 +50,31 @@ app.use(cookieParser());
 
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  limit: 300,
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.method === 'OPTIONS',
+  skip: (req) => req.method === 'OPTIONS' || process.env.NODE_ENV === 'test',
 });
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many attempts. Please try again later.' },
-});
-const forgotPasswordLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Too many attempts. Please try again later.' },
-});
+const makeAuthLimiter = (limit) =>
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    skip: (req) => req.method === 'OPTIONS' || process.env.NODE_ENV === 'test',
+    message: { success: false, message: 'Too many attempts. Please try again later.' },
+  });
 
 app.use('/api', globalLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/signup', authLimiter);
-app.use('/api/auth/google', authLimiter);
-app.use('/api/auth/refresh', authLimiter);
-app.use('/api/auth/forgot-password', forgotPasswordLimiter);
-app.use('/api/auth/reset-password', authLimiter);
+app.use('/api/auth/login', makeAuthLimiter(20));
+app.use('/api/auth/signup', makeAuthLimiter(20));
+app.use('/api/auth/google', makeAuthLimiter(20));
+app.use('/api/auth/refresh', makeAuthLimiter(100));
+app.use('/api/auth/forgot-password', makeAuthLimiter(5));
+app.use('/api/auth/reset-password', makeAuthLimiter(20));
 
-// ── API DOCS
 app.use('/api/docs', (req, res, next) => {
   if (process.env.NODE_ENV === 'production') {
     return res.status(404).json({ success: false, message: 'Route not found.' });
