@@ -24,8 +24,7 @@ body {
 .gsi-host {
   display: flex;
   justify-content: center;
-  overflow: hidden;
-  border-radius: 0.75rem;
+
 }
 .gsi-host > div {
   margin: 0 !important;
