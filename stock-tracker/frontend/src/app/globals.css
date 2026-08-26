@@ -22,12 +22,10 @@ body {
   min-height: calc(100vh - var(--cookie-banner-height, 0px));
 }
 
-.gsi-host > div,
-.gsi-host iframe {
-  width: 100% !important;
-  max-width: none !important;
+.gsi-host > div {
+ 
   margin: 0 !important;
-  display: block !important;
+
 }
 
 

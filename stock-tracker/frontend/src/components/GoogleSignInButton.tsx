@@ -144,7 +144,7 @@ export default function GoogleSignInButton({
       <div ref={wrapperRef} className="w-full">
         <div
           ref={buttonRef}
-          className={`gsi-host w-full overflow-hidden rounded-xl ring-1 ring-white/10 transition-shadow duration-200 hover:ring-white/25 focus-within:ring-2 focus-within:ring-emerald-500 ${
+          className={`gsi-host w-full ${
             ready ? "" : "hidden"
           }`}
         />
