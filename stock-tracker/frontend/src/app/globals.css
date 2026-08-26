@@ -5,9 +5,7 @@
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* Prices, percentages, and OHLC readouts update live over the socket —
-   tabular figures keep digit widths fixed so columns don't jitter as
-   values change. */
+
 .font-mono {
   font-variant-numeric: tabular-nums;
 }
@@ -29,4 +27,9 @@ body {
   width: 100% !important;
   max-width: none !important;
   margin: 0 !important;
+  display: block !important;
 }
+
+
+
+
