@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import Button from "@/components/ui/Button";
@@ -16,10 +16,44 @@ export const getCookieConsent = (): CookieConsentValue | null => {
   return value === "accepted" || value === "necessary" ? value : null;
 };
 
+const BANNER_HEIGHT_VAR = "--cookie-banner-height";
+
+const setBannerHeight = (px: number) => {
+  if (typeof document === "undefined") return;
+  document.documentElement.style.setProperty(BANNER_HEIGHT_VAR, `${px}px`);
+};
+
+const clearBannerHeight = () => {
+  if (typeof document === "undefined") return;
+  document.documentElement.style.removeProperty(BANNER_HEIGHT_VAR);
+};
+
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
+  const observerRef = useRef<ResizeObserver | null>(null);
+
   useEffect(() => {
     setVisible(getCookieConsent() === null);
+  }, []);
+
+  const measure = useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+
+    if (!node) {
+      clearBannerHeight();
+      return;
+    }
+
+    setBannerHeight(node.getBoundingClientRect().height);
+
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      setBannerHeight(node.getBoundingClientRect().height);
+    });
+    observer.observe(node);
+    observerRef.current = observer;
   }, []);
 
   const choose = (value: CookieConsentValue) => {
@@ -31,6 +65,7 @@ export default function CookieConsent() {
     <AnimatePresence>
       {visible && (
         <motion.div
+          ref={measure}
           role="dialog"
           aria-live="polite"
           aria-label="Cookie notice"

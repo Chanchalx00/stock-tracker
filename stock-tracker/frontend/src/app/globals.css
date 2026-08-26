@@ -12,6 +12,18 @@
   font-variant-numeric: tabular-nums;
 }
 
+body {
+  padding-bottom: var(--cookie-banner-height, 0px);
+}
+
+.min-h-dvh {
+  min-height: calc(100dvh - var(--cookie-banner-height, 0px));
+}
+
+.min-h-screen {
+  min-height: calc(100vh - var(--cookie-banner-height, 0px));
+}
+
 .gsi-host,
 .gsi-host > div,
 .gsi-host [role="button"] {
