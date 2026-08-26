@@ -242,7 +242,7 @@ export default function StockDetailModal({
         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
         className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl"
       >
-        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 pt-5 pb-4 border-b border-gray-800">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-4 sm:px-6 pt-5 pb-4 border-b border-gray-800">
           <div className="flex items-center gap-3 min-w-0">
             <StockAvatar symbol={stock.symbol.replace(/\.(NS|BO)$/i, "")} size={44} className="shrink-0" />
             <div className="min-w-0">
@@ -260,8 +260,8 @@ export default function StockDetailModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 pr-8">
-            <div className="text-right">
+          <div className="flex items-center gap-3 shrink-0 sm:pr-8">
+            <div className="text-left sm:text-right">
               <span className="text-2xl font-bold text-white font-mono block">
                 {formatPrice(stock.currentPrice)}
               </span>
@@ -287,7 +287,7 @@ export default function StockDetailModal({
           </button>
         </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 px-6 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 px-4 sm:px-6 py-4">
           <section aria-labelledby="stats-title">
             <h3 id="stats-title" className="sr-only">
               Market statistics
@@ -356,7 +356,7 @@ export default function StockDetailModal({
         </div>
 
         {stock.high > stock.low && (
-          <section aria-label="Day price range" className="px-6 pb-4">
+          <section aria-label="Day price range" className="px-4 sm:px-6 pb-4">
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs text-gray-500 font-medium">Day Range</p>
               <div className="flex items-center gap-3 text-xs text-gray-500">
@@ -398,7 +398,7 @@ export default function StockDetailModal({
           </section>
         )}
 
-        <section aria-labelledby="news-title" className="px-6 pb-4">
+        <section aria-labelledby="news-title" className="px-4 sm:px-6 pb-4">
           <h3
             id="news-title"
             className="flex items-center gap-1.5 text-xs text-gray-500 font-medium mb-2"
@@ -415,7 +415,7 @@ export default function StockDetailModal({
         </section>
 
         {(onAddWatchlist || onCreateAlert) && (
-          <footer className="px-6 pb-5 flex gap-3">
+          <footer className="px-4 sm:px-6 pb-5 flex flex-col sm:flex-row gap-3">
             {onAddWatchlist && (
               <Button
                 variant="secondary"

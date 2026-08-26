@@ -141,7 +141,7 @@ export default function NewsClient() {
       <div className="min-h-screen bg-gray-950">
         <Navbar />
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
           <FadeIn>
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
@@ -193,7 +193,6 @@ export default function NewsClient() {
               />
 
               <div className="flex items-center justify-between flex-wrap gap-3">
-                {/* Category Pills */}
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
                   {CATEGORIES.map((cat) => (
                     <button

@@ -88,7 +88,7 @@ export default function Navbar() {
 
             <ul
               role="list"
-              className="hidden md:flex items-center gap-0.5 overflow-x-auto scrollbar-none"
+              className="hidden lg:flex items-center gap-0.5"
             >
               {NAV_LINKS.map(({ href, label, Icon }) => {
                 const active = pathname === href;
@@ -115,7 +115,7 @@ export default function Navbar() {
               })}
             </ul>
 
-            <div className="hidden md:flex items-center gap-3 shrink-0">
+            <div className="hidden lg:flex items-center gap-3 shrink-0">
               {user && (
                 <span
                   aria-label={`Logged in as ${user.name}`}
@@ -138,7 +138,7 @@ export default function Navbar() {
 
             <button
               className={cn(
-                "md:hidden flex items-center justify-center w-9 h-9 rounded-lg",
+                "lg:hidden flex items-center justify-center w-9 h-9 rounded-lg",
                 "text-gray-400 hover:text-white hover:bg-gray-800 transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500",
               )}
@@ -157,7 +157,7 @@ export default function Navbar() {
         aria-hidden="true"
         onClick={() => setDrawerOpen(false)}
         className={cn(
-          "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 md:hidden",
+          "fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden",
           drawerOpen
             ? "opacity-100 pointer-events-auto"
             : "opacity-0 pointer-events-none",
@@ -169,9 +169,10 @@ export default function Navbar() {
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
+        inert={!drawerOpen}
         className={cn(
-          "fixed top-0 right-0 z-50 h-full w-72 bg-gray-950 border-l border-gray-800",
-          "flex flex-col transition-transform duration-300 ease-in-out md:hidden",
+          "fixed top-0 right-0 z-50 h-full w-72 max-w-[85vw] bg-gray-950 border-l border-gray-800",
+          "flex flex-col transition-transform duration-300 ease-in-out lg:hidden",
           drawerOpen ? "translate-x-0" : "translate-x-full",
         )}
       >

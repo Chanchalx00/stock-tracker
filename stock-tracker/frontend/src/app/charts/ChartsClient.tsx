@@ -25,7 +25,6 @@ import {
   IconActivity,
   IconLineChart,
   IconRotate,
-  IconSliders,
 } from "@/lib/icons";
 import { formatPrice, displaySymbol } from "@/lib/utils";
 import { mergeLiveTick } from "@/lib/liveChart";
@@ -172,7 +171,7 @@ export default function ChartsClient() {
       <div className="min-h-screen bg-gray-950">
         <Navbar />
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
           <FadeIn>
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -237,7 +236,6 @@ export default function ChartsClient() {
               <ChartWatchlist activeSymbol={symbol} onSelect={(sym, desc) => loadChart(sym, desc, range)} />
 
               <div className="flex-1 min-w-0 border border-gray-800 rounded-2xl overflow-hidden bg-[#131722] shadow-2xl flex flex-col">
-                {/* Symbol Header */}
                 <div className="flex items-center justify-between flex-wrap gap-3 px-5 py-4 bg-gray-900 border-b border-gray-800">
                   <div className="flex items-center gap-3">
                     <StockAvatar symbol={symbol} size={40} />
@@ -261,11 +259,8 @@ export default function ChartsClient() {
                   )}
                 </div>
 
-                {/* TradingView Feature Toolbar */}
                 <div className="flex items-center justify-between flex-wrap gap-2 px-4 py-2.5 bg-[#181c27] border-b border-[#232733] text-xs">
-                  {/* Left Controls: Time Ranges & Chart Types */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Time Range Selector */}
                     <div className="flex items-center bg-[#1e222d] p-0.5 rounded-lg border border-gray-800">
                       {RANGES.map((r) => (
                         <button
@@ -282,7 +277,6 @@ export default function ChartsClient() {
                       ))}
                     </div>
 
-                    {/* Chart Type Selector */}
                     <div className="flex items-center bg-[#1e222d] p-0.5 rounded-lg border border-gray-800">
                       {CHART_TYPES.map((ct) => (
                         <button
@@ -302,9 +296,7 @@ export default function ChartsClient() {
                     </div>
                   </div>
 
-                  {/* Right Controls: Indicators & Reset Zoom */}
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Indicators */}
                     <div className="flex items-center gap-1.5 bg-[#1e222d] px-2 py-1 rounded-lg border border-gray-800">
                       <span className="text-[11px] text-gray-500 font-medium mr-1 hidden sm:inline">Indicators:</span>
                       <button
@@ -349,7 +341,6 @@ export default function ChartsClient() {
                       </button>
                     </div>
 
-                    {/* Reset Zoom Button */}
                     <button
                       onClick={() => chartRef.current?.resetZoom()}
                       className="px-2.5 py-1 rounded-lg bg-[#1e222d] border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 transition-colors text-xs flex items-center gap-1.5 font-medium"
@@ -361,10 +352,9 @@ export default function ChartsClient() {
                   </div>
                 </div>
 
-                {/* Main Canvas Area */}
-                <div className="relative min-h-[500px] flex-1 bg-[#131722]">
+                <div className="relative flex-1 bg-[#131722] h-85 sm:h-110 lg:h-130">
                   {loading ? (
-                    <div className="h-[520px] flex items-center justify-center">
+                    <div className="h-full flex items-center justify-center">
                       <Spinner size="lg" label={`Loading ${range.toUpperCase()} chart data…`} />
                     </div>
                   ) : points.length > 1 ? (
@@ -372,13 +362,12 @@ export default function ChartsClient() {
                       ref={chartRef}
                       points={points}
                       symbol={symbol}
-                      height={520}
                       chartType={chartType}
                       indicators={indicators}
                       range={range}
                     />
                   ) : (
-                    <div className="h-[520px] flex items-center justify-center text-sm text-gray-500">
+                    <div className="h-full flex items-center justify-center px-4 text-center text-sm text-gray-500">
                       No chart data available for {symbol} ({range.toUpperCase()}).
                     </div>
                   )}

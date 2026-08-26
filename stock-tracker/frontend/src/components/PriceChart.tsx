@@ -119,17 +119,7 @@ export default function PriceChart({
     const chart = chartRef.current;
     if (!chart) return;
 
-    if (seriesRef.current) {
-      chart.removeSeries(seriesRef.current);
-      seriesRef.current = null;
-      markersRef.current = null;
-    }
-
-    const color = positive ? "#34d399" : "#f87171";
     const series = chart.addSeries(AreaSeries, {
-      lineColor: color,
-      topColor: `${color}33`,
-      bottomColor: `${color}00`,
       lineWidth: 2,
       priceLineVisible: false,
       lastValueVisible: true,
@@ -140,21 +130,19 @@ export default function PriceChart({
     seriesRef.current = series;
     markersRef.current = createSeriesMarkers(series, []);
 
-    const data = toSeriesData(points);
-    if (data.length) {
-      series.setData(data);
-      const last = data[data.length - 1];
-      markersRef.current.setMarkers([
-        {
-          time: last.time,
-          position: "inBar",
-          shape: "circle",
-          color,
-          size: 1,
-        },
-      ]);
-      chart.timeScale().fitContent();
-    }
+    return () => {
+      seriesRef.current = null;
+      markersRef.current = null;
+    };
+  }, [height]);
+
+  useEffect(() => {
+    const color = positive ? "#34d399" : "#f87171";
+    seriesRef.current?.applyOptions({
+      lineColor: color,
+      topColor: `${color}33`,
+      bottomColor: `${color}00`,
+    });
   }, [positive]);
 
   useEffect(() => {
@@ -162,6 +150,8 @@ export default function PriceChart({
     if (!series || !points.length) return;
 
     const data = toSeriesData(points);
+    if (!data.length) return;
+
     series.setData(data);
 
     const last = data[data.length - 1];

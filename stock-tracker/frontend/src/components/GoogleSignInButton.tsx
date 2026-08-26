@@ -56,6 +56,12 @@ export default function GoogleSignInButton({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const handlersRef = useRef({ onCredential, onError });
+  useEffect(() => {
+    handlersRef.current = { onCredential, onError };
+  });
 
   const initialize = () => {
     if (!GOOGLE_CLIENT_ID || !window.google || !buttonRef.current || !wrapperRef.current) return;
@@ -64,9 +70,9 @@ export default function GoogleSignInButton({
       client_id: GOOGLE_CLIENT_ID,
       callback: (response) => {
         if (response.credential) {
-          onCredential(response.credential);
+          handlersRef.current.onCredential(response.credential);
         } else {
-          onError?.("Google sign-in did not return a credential.");
+          handlersRef.current.onError?.("Google sign-in did not return a credential.");
         }
       },
     });
@@ -78,15 +84,30 @@ export default function GoogleSignInButton({
       width: wrapperRef.current.offsetWidth || 320,
     });
 
+    setFailed(false);
     setReady(true);
   };
 
   useEffect(() => {
-    if (window.google) initialize();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (window.google) {
+      initialize();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (!window.google) setFailed(true);
+    }, 10000);
+    return () => clearTimeout(timer);
   }, []);
 
-  if (!GOOGLE_CLIENT_ID) return null;
+  if (!GOOGLE_CLIENT_ID) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        "[GoogleSignInButton] NEXT_PUBLIC_GOOGLE_CLIENT_ID is not set — the Google sign-in button is hidden. Set it in frontend/.env and restart the dev server.",
+      );
+    }
+    return null;
+  }
 
   return (
     <>
@@ -94,6 +115,7 @@ export default function GoogleSignInButton({
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
         onLoad={initialize}
+        onError={() => setFailed(true)}
       />
 
       <div ref={wrapperRef} className="group relative w-full">
@@ -107,7 +129,11 @@ export default function GoogleSignInButton({
           <span className="pointer-events-none absolute -inset-x-6 -top-8 h-16 rotate-3 bg-white/10 blur-xl transition-opacity duration-300 group-hover:opacity-80" />
           <GoogleGlyph />
           <span className="relative">
-            {ready ? "Continue with Google" : "Loading Google Sign-In…"}
+            {failed
+              ? "Google Sign-In unavailable"
+              : ready
+                ? "Continue with Google"
+                : "Loading Google Sign-In…"}
           </span>
         </div>
 

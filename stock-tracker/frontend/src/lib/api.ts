@@ -27,6 +27,18 @@ interface RetryableConfig extends AxiosRequestConfig {
   _retry?: boolean;
 }
 
+const NO_REFRESH_RETRY_PATHS = [
+  '/auth/login',
+  '/auth/signup',
+  '/auth/google',
+  '/auth/refresh',
+  '/auth/logout',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
+
+const AUTH_SCREENS = ['/login', '/signup', '/forgot-password', '/reset-password'];
+
 let refreshPromise: Promise<string | null> | null = null;
 
 const refreshAccessToken = (): Promise<string | null> => {
@@ -55,10 +67,9 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config as RetryableConfig | undefined;
 
-    const isAuthRequest =
-      originalRequest?.url?.includes('/auth/login') ||
-      originalRequest?.url?.includes('/auth/signup') ||
-      originalRequest?.url?.includes('/auth/refresh');
+    const isAuthRequest = NO_REFRESH_RETRY_PATHS.some((path) =>
+      originalRequest?.url?.includes(path),
+    );
 
     if (
       error.response?.status === 401 &&
@@ -78,7 +89,12 @@ api.interceptors.response.use(
         return api(originalRequest);
       }
 
-      window.location.href = '/login';
+      const onAuthScreen = AUTH_SCREENS.some((path) =>
+        window.location.pathname.startsWith(path),
+      );
+      if (!onAuthScreen) {
+        window.location.href = '/login';
+      }
     }
 
     return Promise.reject(error);

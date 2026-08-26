@@ -55,6 +55,36 @@ export function displaySymbol(symbol: string): string {
   return INDEX_LABELS[bare] ?? bare;
 }
 
+export type AllotmentState = "unknown" | "pending" | "today" | "done";
+
+export function parseIpoDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+
+  const trimmed = value.trim();
+  if (!trimmed || /^(tba|to be announced|not announced|n\/?a|[-–—])$/i.test(trimmed)) {
+    return null;
+  }
+
+  const parsed = new Date(trimmed);
+  if (isNaN(parsed.getTime())) return null;
+
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+}
+
+export function getAllotmentState(
+  allotmentDate: string | null | undefined,
+  now: Date = new Date(),
+): AllotmentState {
+  const allotment = parseIpoDate(allotmentDate);
+  if (!allotment) return "unknown";
+
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  if (allotment.getTime() < today.getTime()) return "done";
+  if (allotment.getTime() === today.getTime()) return "today";
+  return "pending";
+}
+
 export function formatNewsTime(value: string | null | undefined): string {
   if (!value) return "";
   const date = new Date(value);

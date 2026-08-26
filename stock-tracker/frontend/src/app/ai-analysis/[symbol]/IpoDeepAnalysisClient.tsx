@@ -37,6 +37,7 @@ import {
 } from "@/lib/icons";
 
 import { useToast } from "@/hooks/useToast";
+import { getAllotmentState } from "@/lib/utils";
 import api from "@/lib/api";
 
 interface IpoDetails {
@@ -388,18 +389,50 @@ export default function IpoDeepAnalysisClient() {
             </Link>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {data?.company.allotmentStatusUrl && (
-                <a
-                  href={data.company.allotmentStatusUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-800 hover:border-gray-700 text-gray-300 hover:text-white text-xs font-semibold transition-colors"
-                >
-                  <IconCalendar size={13} />
-                  <span>Check Allotment Status</span>
-                  <IconExternalLink size={11} className="text-gray-500" />
-                </a>
-              )}
+              {(() => {
+                const allotmentDate = data?.company.dates?.allotmentDate;
+                const state = getAllotmentState(allotmentDate);
+                const url = data?.company.allotmentStatusUrl;
+
+                if (url && (state === "done" || state === "today")) {
+                  return (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-900 border border-gray-800 hover:border-gray-700 text-gray-300 hover:text-white text-xs font-semibold transition-colors"
+                    >
+                      <IconCalendar size={13} />
+                      <span>
+                        {state === "today"
+                          ? "Allotment expected today"
+                          : "Check Allotment Status"}
+                      </span>
+                      <IconExternalLink size={11} className="text-gray-500" />
+                    </a>
+                  );
+                }
+
+                if (!data) return null;
+
+                return (
+                  <span
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-900/60 border border-gray-800/60 text-gray-500 text-xs font-semibold"
+                    title={
+                      state === "unknown"
+                        ? "Chittorgarh has not published an allotment date for this IPO yet."
+                        : `Allotment is scheduled for ${allotmentDate}.`
+                    }
+                  >
+                    <IconCalendar size={13} />
+                    <span>
+                      {state === "unknown"
+                        ? "Allotment date not announced"
+                        : `Allotment on ${allotmentDate}`}
+                    </span>
+                  </span>
+                );
+              })()}
               <Button
                 variant="secondary"
                 size="sm"

@@ -37,6 +37,7 @@ import {
 } from "@/lib/icons";
 
 import { useToast } from "@/hooks/useToast";
+import { getAllotmentState } from "@/lib/utils";
 import api from "@/lib/api";
 
 export type Verdict = "Pass" | "Caution" | "Fail" | "Not Assessed" | "Info";
@@ -232,7 +233,7 @@ export default function AiAnalysisClient() {
       setIpos(data.data?.ipos || []);
       setSummary(data.data?.summary || null);
     } catch {
-      toastError("Could not fetch AI Momentum Mantra IPO data.");
+      toastError("Could not fetch AlphaScope IPO data.");
     } finally {
       setLoading(false);
     }
@@ -405,7 +406,6 @@ export default function AiAnalysisClient() {
               </Button>
             </form>
 
-            {/* Tabs: horizontally scrollable on mobile so labels never overflow the viewport */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 border-b border-gray-800 mb-6 pb-2">
               <div className="flex items-center gap-2 overflow-x-auto no-scrollbar -mx-3 px-3 sm:mx-0 sm:px-0">
                 <button
@@ -417,7 +417,7 @@ export default function AiAnalysisClient() {
                   }`}
                 >
                   <IconFlame size={14} />
-                  <span>Momentum Mantra IPOs ({ipos.length})</span>
+                  <span>AlphaScope IPOs ({ipos.length})</span>
                 </button>
 
                 <button
@@ -469,7 +469,7 @@ export default function AiAnalysisClient() {
             <FadeIn delay={0.05}>
               {loading ? (
                 <div className="flex justify-center py-16">
-                  <Spinner size="lg" label="Running Momentum Mantra AI engine…" />
+                  <Spinner size="lg" label="Running AlphaScope AI engine…" />
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -483,6 +483,7 @@ export default function AiAnalysisClient() {
                     .map((ipo) => {
                     const isExpanded = expandedIpoId === ipo.id;
                     const ratingClass = getRatingBadgeClass(ipo.rating);
+                    const allotmentState = getAllotmentState(ipo.allotmentDate);
 
                     return (
                       <div
@@ -534,7 +535,8 @@ export default function AiAnalysisClient() {
                               <span>Deep Analysis Report</span>
                             </Link>
 
-                            {ipo.allotmentStatusUrl && (
+                            {ipo.allotmentStatusUrl &&
+                            (allotmentState === "done" || allotmentState === "today") ? (
                               <a
                                 href={ipo.allotmentStatusUrl}
                                 target="_blank"
@@ -542,9 +544,29 @@ export default function AiAnalysisClient() {
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900 border border-gray-800 hover:border-gray-700 text-gray-300 hover:text-white font-bold text-xs transition-all"
                               >
                                 <IconCalendar size={14} />
-                                <span>Check Allotment Status</span>
+                                <span>
+                                  {allotmentState === "today"
+                                    ? "Allotment expected today"
+                                    : "Check Allotment Status"}
+                                </span>
                                 <IconExternalLink size={11} className="text-gray-500" />
                               </a>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900/60 border border-gray-800/60 text-gray-500 font-bold text-xs"
+                                title={
+                                  allotmentState === "unknown"
+                                    ? "Chittorgarh has not published an allotment date for this IPO yet."
+                                    : `Allotment is scheduled for ${ipo.allotmentDate}.`
+                                }
+                              >
+                                <IconCalendar size={14} />
+                                <span>
+                                  {allotmentState === "unknown"
+                                    ? "Allotment date not announced"
+                                    : `Allotment on ${ipo.allotmentDate}`}
+                                </span>
+                              </span>
                             )}
 
                             <div className="flex items-center gap-2 bg-gray-950 border border-gray-800 px-3 py-1.5 rounded-xl">
@@ -1037,7 +1059,7 @@ export default function AiAnalysisClient() {
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 sm:p-12 text-center">
                   <IconSearch size={32} className="mx-auto text-gray-600 mb-3" />
                   <p className="text-sm text-gray-400 font-medium">
-                    Search any stock symbol above (e.g. RELIANCE, TCS, INFY) to generate a custom Momentum Mantra report.
+                    Search any stock symbol above (e.g. RELIANCE, TCS, INFY) to generate a custom AlphaScope report.
                   </p>
                 </div>
               )}

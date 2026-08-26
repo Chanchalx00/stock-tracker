@@ -152,6 +152,9 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
     const [legendBar, setLegendBar] = useState<Bar | null>(null);
     const dataRef = useRef<Bar[]>([]);
 
+    const builtForRef = useRef<{ chartType: ChartType; indicators: IndicatorsState } | null>(null);
+    const hoveringRef = useRef(false);
+
     useImperativeHandle(ref, () => ({
       resetZoom: () => {
         chartRef.current?.timeScale().fitContent();
@@ -234,13 +237,18 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
         const found = param.time
           ? dataRef.current.find((d) => d.time === param.time)
           : null;
+        hoveringRef.current = Boolean(found);
         setLegendBar(found ?? null);
       };
       chart.subscribeCrosshairMove(handleCrosshairMove);
 
       const resizeObserver = new ResizeObserver((entries) => {
-        const width = entries[0]?.contentRect.width;
-        if (width) chart.applyOptions({ width });
+        const box = entries[0]?.contentRect;
+        if (!box) return;
+        const next: { width?: number; height?: number } = {};
+        if (box.width) next.width = box.width;
+        if (box.height) next.height = box.height;
+        if (next.width || next.height) chart.applyOptions(next);
       });
       resizeObserver.observe(containerRef.current);
 
@@ -259,12 +267,60 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [height, symbol, range]);
 
-    // Re-create price & indicator series when chartType, indicators, or points change
+    const mainSeriesPoint = (bar: Bar) =>
+      chartType === "line" || chartType === "area"
+        ? { time: bar.time, value: bar.close }
+        : bar;
+
+    const refreshOverlays = (bars: Bar[]) => {
+      if (ma20SeriesRef.current) ma20SeriesRef.current.setData(calculateSMA(bars, 20));
+      if (ma50SeriesRef.current) ma50SeriesRef.current.setData(calculateSMA(bars, 50));
+      if (ema20SeriesRef.current) ema20SeriesRef.current.setData(calculateEMA(bars, 20));
+    };
+
     useEffect(() => {
       const chart = chartRef.current;
       if (!chart) return;
 
-      // Remove existing main series if type changed
+      const nextData = toSeriesData(points);
+      const prevData = dataRef.current;
+
+      const mainSeriesApi = seriesRef.current;
+      const isLiveTick =
+        builtForRef.current?.chartType === chartType &&
+        builtForRef.current?.indicators === indicators &&
+        prevData.length > 0 &&
+        nextData.length > 0 &&
+        prevData[0].time === nextData[0].time &&
+        nextData.length - prevData.length >= 0 &&
+        nextData.length - prevData.length <= 1;
+
+      if (isLiveTick && mainSeriesApi) {
+        dataRef.current = nextData;
+        const last = nextData[nextData.length - 1];
+
+        mainSeriesApi.update(mainSeriesPoint(last));
+        volumeSeriesRef.current?.update({
+          time: last.time,
+          value: last.volume,
+          color: last.close >= last.open ? UP_COLOR_FADED : DOWN_COLOR_FADED,
+        });
+        refreshOverlays(nextData);
+
+        markersRef.current?.setMarkers([
+          {
+            time: last.time,
+            position: "aboveBar",
+            shape: "circle",
+            color: last.close >= last.open ? UP_COLOR : DOWN_COLOR,
+            size: 1,
+          },
+        ]);
+
+        if (!hoveringRef.current) setLegendBar(last);
+        return;
+      }
+
       if (seriesRef.current) {
         chart.removeSeries(seriesRef.current);
         seriesRef.current = null;
@@ -286,12 +342,17 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
         ema20SeriesRef.current = null;
       }
 
-      if (!points.length) return;
+      builtForRef.current = null;
 
-      const data = toSeriesData(points);
+      if (!nextData.length) {
+        dataRef.current = [];
+        setLegendBar(null);
+        return;
+      }
+
+      const data = nextData;
       dataRef.current = data;
 
-      // Add main series
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let mainSeries: ISeriesApi<any>;
       switch (chartType) {
@@ -342,7 +403,6 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
       seriesRef.current = mainSeries;
       markersRef.current = createSeriesMarkers(mainSeries, []);
 
-      // Add Volume Series if enabled
       if (indicators.volume) {
         const volumeSeries = chart.addSeries(HistogramSeries, {
           priceFormat: { type: "volume" },
@@ -363,7 +423,6 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
         volumeSeriesRef.current = volumeSeries;
       }
 
-      // Add MA 20
       if (indicators.ma20) {
         const ma20Data = calculateSMA(data, 20);
         if (ma20Data.length) {
@@ -379,7 +438,6 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
         }
       }
 
-      // Add MA 50
       if (indicators.ma50) {
         const ma50Data = calculateSMA(data, 50);
         if (ma50Data.length) {
@@ -395,7 +453,6 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
         }
       }
 
-      // Add EMA 20
       if (indicators.ema20) {
         const ema20Data = calculateEMA(data, 20);
         if (ema20Data.length) {
@@ -423,7 +480,9 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
         },
       ]);
 
+      builtForRef.current = { chartType, indicators };
       chart.timeScale().fitContent();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [points, chartType, indicators]);
 
     const displayBar = legendBar ?? dataRef.current[dataRef.current.length - 1] ?? null;
@@ -434,7 +493,7 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
         : 0;
 
     return (
-      <div className="relative w-full">
+      <div className="relative h-full w-full">
         {displayBar && (
           <div
             className="absolute top-2 left-2 z-10 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-3 py-1.5 rounded-lg bg-black/50 backdrop-blur-md text-[11px] font-mono border border-gray-800 pointer-events-none"
@@ -478,7 +537,7 @@ const CandlestickChart = forwardRef<CandlestickChartRef, CandlestickChartProps>(
             )}
           </div>
         )}
-        <div ref={containerRef} className="w-full cursor-crosshair" />
+        <div ref={containerRef} className="h-full w-full cursor-crosshair" />
       </div>
     );
   },

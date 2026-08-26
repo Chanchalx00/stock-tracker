@@ -51,10 +51,10 @@ export default function ChartWatchlist({
     };
   }, []);
 
-  const allRows = [...indices, ...stocks];
+  const visibleStocks = showAll ? stocks : stocks.slice(0, VISIBLE_STOCK_COUNT);
 
   useStockSocket(
-    allRows.map((r) => r.symbol),
+    [...indices, ...visibleStocks].map((r) => r.symbol),
     (quote) => {
       const patch = (r: WatchRow): WatchRow =>
         r.symbol === quote.symbol
@@ -69,8 +69,6 @@ export default function ChartWatchlist({
       setStocks((prev) => prev.map(patch));
     },
   );
-
-  const visibleStocks = showAll ? stocks : stocks.slice(0, VISIBLE_STOCK_COUNT);
 
   const renderRow = (row: WatchRow) => {
     const positive = row.change >= 0;

@@ -1,5 +1,5 @@
-import { useEffect, useCallback, useMemo } from 'react';
-import { getSocket } from '@/lib/socket';
+import { useEffect, useRef } from 'react';
+import { getSocket, subscribeSymbols, unsubscribeSymbols } from '@/lib/socket';
 
 interface LiveQuote {
   symbol:        string;
@@ -15,34 +15,29 @@ interface LiveQuote {
 type QuoteHandler = (quote: LiveQuote) => void;
 
 export function useStockSocket(symbols: string[], onQuote: QuoteHandler) {
-  const symbolsKey = useMemo(() => symbols.join(','), [symbols]);
+  const symbolsKey = symbols.join(',');
 
-  const subscribe = useCallback(() => {
-    if (!symbols.length) return;
-    const socket = getSocket();
-
-    socket.emit('subscribe', symbols);
-
-    symbols.forEach((symbol) => {
-      socket.on(`price:${symbol}`, (quote: LiveQuote) => {
-        onQuote(quote);
-      });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbolsKey]);
-
-  const unsubscribe = useCallback(() => {
-    if (!symbols.length) return;
-    const socket = getSocket();
-    socket.emit('unsubscribe', symbols);
-    symbols.forEach((symbol) => {
-      socket.off(`price:${symbol}`);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbolsKey]);
+  const onQuoteRef = useRef(onQuote);
+  useEffect(() => {
+    onQuoteRef.current = onQuote;
+  });
 
   useEffect(() => {
-    subscribe();
-    return () => unsubscribe();
-  }, [subscribe, unsubscribe]);
+    const list = symbolsKey ? symbolsKey.split(',') : [];
+    if (!list.length) return;
+
+    const socket = getSocket();
+    subscribeSymbols(list);
+
+    const bound = list.map((symbol) => {
+      const handler = (quote: LiveQuote) => onQuoteRef.current(quote);
+      socket.on(`price:${symbol}`, handler);
+      return { symbol, handler };
+    });
+
+    return () => {
+      unsubscribeSymbols(list);
+      bound.forEach(({ symbol, handler }) => socket.off(`price:${symbol}`, handler));
+    };
+  }, [symbolsKey]);
 }

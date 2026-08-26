@@ -6,6 +6,8 @@ import {
   pnlColor,
   displaySymbol,
   formatNewsTime,
+  parseIpoDate,
+  getAllotmentState,
 } from "./utils";
 
 describe("formatPrice", () => {
@@ -95,5 +97,55 @@ describe("formatNewsTime", () => {
 
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60_000).toISOString();
     expect(formatNewsTime(threeHoursAgo)).toBe("3h ago");
+  });
+});
+
+describe("parseIpoDate", () => {
+  it("parses the format Chittorgarh publishes", () => {
+    const d = parseIpoDate("Fri, Aug 28, 2026");
+    expect(d).not.toBeNull();
+    expect(d!.getFullYear()).toBe(2026);
+    expect(d!.getMonth()).toBe(7);
+    expect(d!.getDate()).toBe(28);
+  });
+
+  it("keeps the calendar day it was given, not a UTC-shifted one", () => {
+    const d = parseIpoDate("Tue, Sep 1, 2026");
+    expect(d!.getDate()).toBe(1);
+    expect(d!.getMonth()).toBe(8);
+  });
+
+  it("returns null for placeholders and junk", () => {
+    for (const v of [null, undefined, "", "   ", "TBA", "Not announced", "N/A", "-", "banana"]) {
+      expect(parseIpoDate(v)).toBeNull();
+    }
+  });
+});
+
+describe("getAllotmentState", () => {
+  const on = (iso: string) => new Date(`${iso}T12:00:00`);
+
+  it("reports done once the allotment date has passed", () => {
+    expect(getAllotmentState("Fri, Aug 28, 2026", on("2026-08-29"))).toBe("done");
+    expect(getAllotmentState("Fri, Aug 28, 2026", on("2026-09-15"))).toBe("done");
+  });
+
+  it("reports today on the allotment date itself", () => {
+    expect(getAllotmentState("Fri, Aug 28, 2026", on("2026-08-28"))).toBe("today");
+  });
+
+  it("reports pending before the allotment date", () => {
+    expect(getAllotmentState("Fri, Aug 28, 2026", on("2026-08-25"))).toBe("pending");
+    expect(getAllotmentState("Tue, Sep 1, 2026", on("2026-08-25"))).toBe("pending");
+  });
+
+  it("reports unknown when no usable date was published", () => {
+    expect(getAllotmentState(undefined, on("2026-08-25"))).toBe("unknown");
+    expect(getAllotmentState("TBA", on("2026-08-25"))).toBe("unknown");
+  });
+
+  it("does not flip a day early for a late-evening check", () => {
+    const lateOnTheDayBefore = new Date("2026-08-27T23:30:00");
+    expect(getAllotmentState("Fri, Aug 28, 2026", lateOnTheDayBefore)).toBe("pending");
   });
 });

@@ -89,7 +89,6 @@ export default function PortfolioClient() {
     }
   };
 
-  // Analytics computations
   const analytics = useMemo<PortfolioAnalytics | null>(() => {
     if (!holdings.length) return null;
 
@@ -175,7 +174,7 @@ export default function PortfolioClient() {
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-950 text-white">
         <Navbar />
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
           <FadeIn>
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -189,7 +188,6 @@ export default function PortfolioClient() {
             </div>
           </FadeIn>
 
-          {/* Top Summary Metric Cards */}
           {summary && (
             <StaggerContainer
               className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6"
@@ -230,11 +228,9 @@ export default function PortfolioClient() {
             </StaggerContainer>
           )}
 
-          {/* Asset Allocation & Performance Intelligence Row */}
           {analytics && holdings.length > 0 && (
             <FadeIn delay={0.05}>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-                {/* Asset Allocation Weight Bar */}
                 <div className="lg:col-span-2 bg-gray-900 border border-gray-800 rounded-2xl p-5">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-white flex items-center gap-2">
@@ -246,7 +242,6 @@ export default function PortfolioClient() {
                     </span>
                   </div>
 
-                  {/* Multi-segment Progress Track */}
                   <div className="relative h-3 w-full bg-gray-800 rounded-full overflow-hidden flex mb-4 border border-gray-800">
                     {analytics.allocations.map((item) => (
                       <div
@@ -261,7 +256,6 @@ export default function PortfolioClient() {
                     ))}
                   </div>
 
-                  {/* Allocation Badges */}
                   <div className="flex flex-wrap gap-2">
                     {analytics.allocations.map((item) => (
                       <div
@@ -281,7 +275,6 @@ export default function PortfolioClient() {
                   </div>
                 </div>
 
-                {/* Performance Analytics Sidebar */}
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between space-y-3">
                   <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                     <IconTarget size={16} className="text-emerald-400" />
@@ -299,7 +292,6 @@ export default function PortfolioClient() {
                     </div>
                   </div>
 
-                  {/* Best & Worst Holding Performers */}
                   <div className="space-y-2 text-xs">
                     {analytics.best && (
                       <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
@@ -330,7 +322,6 @@ export default function PortfolioClient() {
             </FadeIn>
           )}
 
-          {/* Add Holding Form */}
           <FadeIn delay={0.08}>
             <Card padding="lg" className="mb-6">
               <h2 className="text-sm font-semibold text-gray-300 mb-4">
@@ -393,7 +384,6 @@ export default function PortfolioClient() {
             </Card>
           </FadeIn>
 
-          {/* Holdings Table */}
           {loading ? (
             <div className="flex justify-center py-10">
               <Spinner size="lg" label="Loading portfolio…" />
@@ -408,7 +398,107 @@ export default function PortfolioClient() {
             </FadeIn>
           ) : (
             <FadeIn delay={0.1}>
-              <div className="overflow-x-auto rounded-xl border border-gray-800">
+              <ul role="list" className="lg:hidden space-y-3">
+                {holdings.map((h) => {
+                  const pos = (h.pnl ?? 0) >= 0;
+                  const invested =
+                    h.investedValue ??
+                    (h.buyPrice != null && h.quantity != null
+                      ? h.buyPrice * h.quantity
+                      : null);
+                  const pnlColorClass =
+                    h.pnl != null
+                      ? pos
+                        ? "text-emerald-400"
+                        : "text-red-400"
+                      : "text-gray-400";
+
+                  return (
+                    <li
+                      key={h._id}
+                      className="rounded-xl border border-gray-800 bg-gray-900/40 p-4"
+                    >
+                      <div className="flex items-start gap-3">
+                        <StockAvatar symbol={h.symbol} size={32} />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-white truncate">{h.symbol}</p>
+                          <p className="text-xs text-gray-400 truncate">
+                            {h.companyName || "—"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Link
+                            href={`/charts?symbol=${encodeURIComponent(h.symbol)}`}
+                            aria-label={`Open chart for ${h.symbol}`}
+                            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                          >
+                            <IconLineChart size={16} aria-hidden="true" />
+                          </Link>
+                          <button
+                            onClick={() => handleRemove(h._id)}
+                            aria-label={`Remove ${h.symbol} from portfolio`}
+                            className="p-2 rounded-lg text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+                          >
+                            <IconTrash size={16} aria-hidden="true" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-gray-800 pt-3">
+                        <span className="text-xs text-gray-500">P&amp;L</span>
+                        <span className={`font-mono font-bold ${pnlColorClass}`}>
+                          {h.pnl != null
+                            ? `${pos ? "+" : ""}₹${h.pnl.toLocaleString()}`
+                            : "—"}
+                          {h.pnlPercent != null && (
+                            <span className="ml-2 text-xs">
+                              ({pos ? "+" : ""}
+                              {h.pnlPercent.toFixed(2)}%)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+
+                      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">Qty</dt>
+                          <dd className="font-mono text-gray-300">{h.quantity}</dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">Buy</dt>
+                          <dd className="font-mono text-gray-300">
+                            {h.buyPrice != null ? `₹${h.buyPrice.toLocaleString()}` : "—"}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">Current</dt>
+                          <dd className="font-mono font-semibold text-white">
+                            {h.currentPrice != null
+                              ? `₹${h.currentPrice.toLocaleString()}`
+                              : "—"}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-gray-500">Invested</dt>
+                          <dd className="font-mono text-gray-300">
+                            {invested != null ? `₹${invested.toLocaleString()}` : "—"}
+                          </dd>
+                        </div>
+                        <div className="col-span-2 flex justify-between gap-2">
+                          <dt className="text-gray-500">Current value</dt>
+                          <dd className="font-mono font-semibold text-white">
+                            {h.currentValue != null
+                              ? `₹${h.currentValue.toLocaleString()}`
+                              : "—"}
+                          </dd>
+                        </div>
+                      </dl>
+                    </li>
+                  );
+                })}
+              </ul>
+
+              <div className="hidden lg:block overflow-x-auto rounded-xl border border-gray-800">
                 <table className="min-w-[960px] w-full text-sm">
                   <caption className="sr-only">
                     Your portfolio holdings with quantity, buy price, current
@@ -511,7 +601,6 @@ export default function PortfolioClient() {
                           </td>
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-2">
-                              {/* Direct Chart link */}
                               <Link
                                 href={`/charts?symbol=${encodeURIComponent(h.symbol)}`}
                                 className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
@@ -519,7 +608,6 @@ export default function PortfolioClient() {
                               >
                                 <IconLineChart size={14} />
                               </Link>
-                              {/* Trash button */}
                               <button
                                 onClick={() => handleRemove(h._id)}
                                 aria-label={`Remove ${h.symbol} from portfolio`}

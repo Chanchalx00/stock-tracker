@@ -37,27 +37,38 @@ export default function WatchlistClient() {
 
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
 
+  const symbolsKey = items.map((i) => i.symbol).join(",");
+
   useEffect(() => {
+    const symbols = symbolsKey ? symbolsKey.split(",") : [];
+    if (!symbols.length) return;
+
+    let cancelled = false;
+
     const fetchInitialQuotes = async () => {
       const data: Record<string, Quote> = {};
 
       await Promise.all(
-        items.map(async (item) => {
+        symbols.map(async (symbol) => {
           try {
-            const q = await api.get(`/stocks/quote/${item.symbol}`);
-
-            data[item.symbol] = q.data.data;
-          } catch {}
+            const q = await api.get(`/stocks/quote/${encodeURIComponent(symbol)}`);
+            data[symbol] = q.data.data;
+          } catch {
+          }
         }),
       );
 
-      setQuotes(data);
+      if (cancelled) return;
+
+      setQuotes((prev) => ({ ...data, ...prev }));
     };
 
-    if (items.length) {
-      fetchInitialQuotes();
-    }
-  }, [items]);
+    fetchInitialQuotes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [symbolsKey]);
 
   useStockSocket(
     items.map((item) => item.symbol),
@@ -84,7 +95,7 @@ export default function WatchlistClient() {
       <div className="min-h-screen bg-gray-950">
         <Navbar />
 
-        <main className="max-w-7xl mx-auto px-4 py-8">
+        <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8">
           <FadeIn>
             <div className="mb-6 flex items-center gap-2">
               <IconWatchlist
