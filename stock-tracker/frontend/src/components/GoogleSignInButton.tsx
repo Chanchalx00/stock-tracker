@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Script from "next/script";
 
 interface GoogleSignInButtonProps {
@@ -27,6 +27,8 @@ declare global {
 }
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+const GSI_MAX_WIDTH = 400;
 
 const GoogleGlyph = () => (
   <svg viewBox="0 0 18 18" className="h-[18px] w-[18px] shrink-0" aria-hidden="true">
@@ -58,47 +60,65 @@ export default function GoogleSignInButton({
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
 
+  const initializedRef = useRef(false);
+  const renderedWidthRef = useRef(0);
+
   const handlersRef = useRef({ onCredential, onError });
   useEffect(() => {
     handlersRef.current = { onCredential, onError };
   });
 
-  const initialize = () => {
-    if (!GOOGLE_CLIENT_ID || !window.google || !buttonRef.current || !wrapperRef.current) return;
+  const render = useCallback(() => {
+    const wrapper = wrapperRef.current;
+    const host = buttonRef.current;
+    if (!GOOGLE_CLIENT_ID || !window.google || !wrapper || !host) return;
 
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: (response) => {
-        if (response.credential) {
-          handlersRef.current.onCredential(response.credential);
-        } else {
-          handlersRef.current.onError?.("Google sign-in did not return a credential.");
-        }
-      },
-    });
+    const width = Math.round(wrapper.getBoundingClientRect().width);
+    if (!width || width === renderedWidthRef.current) return;
+    renderedWidthRef.current = width;
 
-    window.google.accounts.id.renderButton(buttonRef.current, {
+    if (!initializedRef.current) {
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: (response) => {
+          if (response.credential) {
+            handlersRef.current.onCredential(response.credential);
+          } else {
+            handlersRef.current.onError?.("Google sign-in did not return a credential.");
+          }
+        },
+      });
+      initializedRef.current = true;
+    }
+
+    host.innerHTML = "";
+    window.google.accounts.id.renderButton(host, {
       type: "standard",
       theme: "outline",
       size: "large",
-      width: wrapperRef.current.offsetWidth || 320,
+      width: Math.min(width, GSI_MAX_WIDTH),
     });
 
     setFailed(false);
     setReady(true);
-  };
+  }, []);
 
   useEffect(() => {
-    if (window.google) {
-      initialize();
-      return;
-    }
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    const observer = new ResizeObserver(() => render());
+    observer.observe(wrapper);
 
     const timer = setTimeout(() => {
       if (!window.google) setFailed(true);
     }, 10000);
-    return () => clearTimeout(timer);
-  }, []);
+
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, [render]);
 
   if (!GOOGLE_CLIENT_ID) {
     if (process.env.NODE_ENV !== "production") {
@@ -114,7 +134,7 @@ export default function GoogleSignInButton({
       <Script
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
-        onLoad={initialize}
+        onLoad={render}
         onError={() => setFailed(true)}
       />
 
@@ -139,7 +159,7 @@ export default function GoogleSignInButton({
 
         <div
           ref={buttonRef}
-          className={`absolute inset-0 overflow-hidden rounded-2xl opacity-0 ${
+          className={`gsi-host absolute inset-0 overflow-hidden rounded-2xl opacity-0 ${
             ready ? "" : "pointer-events-none"
           }`}
         />
@@ -147,3 +167,6 @@ export default function GoogleSignInButton({
     </>
   );
 }
+
+
+
