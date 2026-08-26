@@ -18,7 +18,7 @@ declare global {
           }) => void;
           renderButton: (
             parent: HTMLElement,
-            options: Record<string, unknown>
+            options: Record<string, unknown>,
           ) => void;
         };
       };
@@ -31,7 +31,11 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const GSI_MAX_WIDTH = 400;
 
 const GoogleGlyph = () => (
-  <svg viewBox="0 0 18 18" className="h-[18px] w-[18px] shrink-0" aria-hidden="true">
+  <svg
+    viewBox="0 0 18 18"
+    className="h-[18px] w-[18px] shrink-0"
+    aria-hidden="true"
+  >
     <path
       fill="#4285F4"
       d="M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7959 2.7164v2.2581h2.9087c1.7018-1.5668 2.6836-3.8741 2.6836-6.615z"
@@ -63,6 +67,7 @@ export default function GoogleSignInButton({
 
   const initializedRef = useRef(false);
   const renderedWidthRef = useRef(0);
+  const heightObserverRef = useRef<ResizeObserver | null>(null);
 
   const handlersRef = useRef({ onCredential, onError });
   useEffect(() => {
@@ -85,7 +90,9 @@ export default function GoogleSignInButton({
           if (response.credential) {
             handlersRef.current.onCredential(response.credential);
           } else {
-            handlersRef.current.onError?.("Google sign-in did not return a credential.");
+            handlersRef.current.onError?.(
+              "Google sign-in did not return a credential.",
+            );
           }
         },
       });
@@ -103,17 +110,22 @@ export default function GoogleSignInButton({
     setFailed(false);
     setReady(true);
 
-    // Google decides its own height, and it is not one fixed number: a signed-in
-    // visitor gets the taller personalised "Continue as <name>" button instead of
-    // the standard one. Adopt whatever it actually drew so the styled button and
-    // the real click target stay the same size.
+    const rendered = host.firstElementChild as HTMLElement | null;
+    if (!rendered) return;
     const syncHeight = () => {
-      const rendered = host.firstElementChild as HTMLElement | null;
-      const h = rendered ? Math.round(rendered.getBoundingClientRect().height) : 0;
+      const h = Math.round(rendered.getBoundingClientRect().height);
       if (h) setRenderedHeight(h);
     };
-    requestAnimationFrame(syncHeight);
-    window.setTimeout(syncHeight, 400);
+    syncHeight();
+
+    heightObserverRef.current?.disconnect();
+    heightObserverRef.current = null;
+
+    if (typeof ResizeObserver === "undefined") return;
+
+    const heightObserver = new ResizeObserver(syncHeight);
+    heightObserver.observe(rendered);
+    heightObserverRef.current = heightObserver;
   }, []);
 
   useEffect(() => {
@@ -129,6 +141,8 @@ export default function GoogleSignInButton({
 
     return () => {
       observer.disconnect();
+      heightObserverRef.current?.disconnect();
+      heightObserverRef.current = null;
       clearTimeout(timer);
     };
   }, [render]);
@@ -182,4 +196,3 @@ export default function GoogleSignInButton({
     </>
   );
 }
-
