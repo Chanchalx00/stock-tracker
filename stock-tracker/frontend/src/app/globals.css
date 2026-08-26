@@ -2,9 +2,9 @@
 
 @theme inline {
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono:
+    var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
-
 
 .font-mono {
   font-variant-numeric: tabular-nums;
@@ -21,13 +21,17 @@ body {
 .min-h-screen {
   min-height: calc(100vh - var(--cookie-banner-height, 0px));
 }
-
+.gsi-host {
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
 .gsi-host > div {
- 
   margin: 0 !important;
-
 }
 
-
-
-
+.gsi-host iframe{
+  color-scheme: dark;
+  background-color: transparent !important;
+}
