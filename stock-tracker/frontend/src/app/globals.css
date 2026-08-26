@@ -28,5 +28,6 @@ body {
 .gsi-host iframe {
   width: 100% !important;
   max-width: none !important;
+  height: 100% !important;
+  margin: 0 !important;
 }
-
