@@ -18,7 +18,7 @@ declare global {
           }) => void;
           renderButton: (
             parent: HTMLElement,
-            options: Record<string, unknown>
+            options: Record<string, unknown>,
           ) => void;
         };
       };
@@ -31,7 +31,11 @@ const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 const GSI_MAX_WIDTH = 400;
 
 const GoogleGlyph = () => (
-  <svg viewBox="0 0 18 18" className="h-[18px] w-[18px] shrink-0" aria-hidden="true">
+  <svg
+    viewBox="0 0 18 18"
+    className="h-[18px] w-[18px] shrink-0"
+    aria-hidden="true"
+  >
     <path
       fill="#4285F4"
       d="M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7959 2.7164v2.2581h2.9087c1.7018-1.5668 2.6836-3.8741 2.6836-6.615z"
@@ -84,7 +88,9 @@ export default function GoogleSignInButton({
           if (response.credential) {
             handlersRef.current.onCredential(response.credential);
           } else {
-            handlersRef.current.onError?.("Google sign-in did not return a credential.");
+            handlersRef.current.onError?.(
+              "Google sign-in did not return a credential.",
+            );
           }
         },
       });
@@ -94,8 +100,11 @@ export default function GoogleSignInButton({
     host.innerHTML = "";
     window.google.accounts.id.renderButton(host, {
       type: "standard",
-      theme: "outline",
+      theme: "filled_black",
       size: "large",
+      shape: "rectangular",
+      text: "continue_with",
+      logo_alignment: "center",
       width: Math.min(width, GSI_MAX_WIDTH),
     });
 
@@ -138,35 +147,20 @@ export default function GoogleSignInButton({
         onError={() => setFailed(true)}
       />
 
-      <div ref={wrapperRef} className="group relative w-full">
-        <div
-          aria-hidden="true"
-          className={`relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm font-medium text-white shadow-lg shadow-black/30 backdrop-blur-xl transition-all duration-200 group-hover:border-white/25 group-hover:bg-white/[0.1] group-focus-within:ring-2 group-focus-within:ring-emerald-500 ${
-            ready ? "" : "opacity-60"
-          }`}
-        >
-          <span className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/15 via-white/0 to-transparent" />
-          <span className="pointer-events-none absolute -inset-x-6 -top-8 h-16 rotate-3 bg-white/10 blur-xl transition-opacity duration-300 group-hover:opacity-80" />
-          <GoogleGlyph />
-          <span className="relative">
-            {failed
-              ? "Google Sign-In unavailable"
-              : ready
-                ? "Continue with Google"
-                : "Loading Google Sign-In…"}
-          </span>
-        </div>
+      <div ref={wrapperRef} className="relative w-full">
+        <div ref={buttonRef} className="gsi-host flex w-full justify-center" />
 
-        <div
-          ref={buttonRef}
-          className={`gsi-host absolute inset-0 overflow-hidden rounded-2xl opacity-0 ${
-            ready ? "" : "pointer-events-none"
-          }`}
-        />
+        {!ready && (
+          <div className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/15 bg-white/6 px-4 py-2.5 text-sm font-medium text-white/70">
+            <GoogleGlyph />
+            <span>
+              {failed
+                ? "Google Sign-In unavailable"
+                : "Loading Google Sign-In…"}
+            </span>
+          </div>
+        )}
       </div>
     </>
   );
 }
-
-
-

@@ -24,11 +24,9 @@ body {
   min-height: calc(100vh - var(--cookie-banner-height, 0px));
 }
 
-.gsi-host,
 .gsi-host > div,
-.gsi-host [role="button"] {
+.gsi-host iframe {
   width: 100% !important;
-  height: 100% !important;
   max-width: none !important;
 }
 
